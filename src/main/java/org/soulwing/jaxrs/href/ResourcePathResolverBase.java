@@ -68,7 +68,7 @@ class ResourcePathResolverBase implements ResourcePathResolver {
    * Initializes this resolver using the given set of root resource types.
    * @param rootResourceTypes set of JAX-RS root resource classes
    */
-  protected void init(Set<Class<?>> rootResourceTypes) {
+  public void init(Set<Class<?>> rootResourceTypes) {
     for (Class<?> rootResourceType : rootResourceTypes) {
       Path path = rootResourceType.getAnnotation(Path.class);
       if (path == null) {
