@@ -38,10 +38,12 @@ public class ServletContextResourcePathResolver
   /**
    * Initializes this resolver using the JAX-RS root resource classes 
    * discovered within the given servlet context.
+   * @param applicationPath the full JAX-RS application path
    * @param servletContext the subject servlet context
    */
-  public void init(ServletContext servletContext) {
-    init(reflections(servletContext).getTypesAnnotatedWith(Path.class));
+  public void init(String applicationPath, ServletContext servletContext) {
+    init(applicationPath, 
+        reflections(servletContext).getTypesAnnotatedWith(Path.class));
   }
 
   private Reflections reflections(ServletContext servletContext) {

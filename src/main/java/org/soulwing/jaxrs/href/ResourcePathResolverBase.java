@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.ws.rs.Path;
+import javax.ws.rs.core.UriBuilder;
 
 /**
  * A base implementation of {@link ResourcePathResolver}.
@@ -66,17 +67,22 @@ class ResourcePathResolverBase implements ResourcePathResolver {
   
   /**
    * Initializes this resolver using the given set of root resource types.
+   * @param applicationPath the full application path
    * @param rootResourceTypes set of JAX-RS root resource classes
    */
-  public void init(Set<Class<?>> rootResourceTypes) {
+  public void init(String applicationPath, Set<Class<?>> rootResourceTypes) {
     for (Class<?> rootResourceType : rootResourceTypes) {
       Path path = rootResourceType.getAnnotation(Path.class);
       if (path == null) {
         throw new IllegalArgumentException(rootResourceType.getSimpleName() 
             + " is not a JAX-RS root resource");
       }
+      String qualifiedPath = UriBuilder.fromPath(applicationPath)
+          .path(path.value())
+          .toTemplate();
+      
       Set<ResourceMethodDescriptor> descriptors = 
-          resourceClassIntrospector.describe(path.value(), rootResourceType);
+          resourceClassIntrospector.describe(qualifiedPath, rootResourceType);
       for (ResourceMethodDescriptor descriptor : descriptors) {
         descriptorMap.put(descriptor.referencedBy(), descriptor);
       }

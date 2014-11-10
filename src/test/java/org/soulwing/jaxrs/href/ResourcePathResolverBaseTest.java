@@ -25,6 +25,8 @@ import static org.hamcrest.Matchers.is;
 import java.util.Collections;
 import java.util.List;
 
+import javax.ws.rs.core.UriBuilder;
+
 import org.jmock.Expectations;
 import org.jmock.auto.Mock;
 import org.jmock.integration.junit4.JUnitRuleMockery;
@@ -39,6 +41,8 @@ import org.soulwing.mock.MockResource;
  * @author Carl Harris
  */
 public class ResourcePathResolverBaseTest {
+  
+  private static final String APP_PATH = "/appPath";
   
   private static final String PATH = "pathTemplate";
 
@@ -61,7 +65,8 @@ public class ResourcePathResolverBaseTest {
   public void testInitWithRootResource() throws Exception {
     context.checking(new Expectations() {
       {
-        oneOf(resourceClassIntrospector).describe(MockResource.PATH, 
+        oneOf(resourceClassIntrospector).describe(
+            makePath(APP_PATH, MockResource.PATH), 
             MockResource.class);
         will(returnValue(Collections.singleton(descriptor)));
         oneOf(descriptor).referencedBy();
@@ -72,14 +77,14 @@ public class ResourcePathResolverBaseTest {
     
     ResourcePathResolverBase resolver = 
         new ResourcePathResolverBase(resourceClassIntrospector);
-    resolver.init(Collections.<Class<?>>singleton(MockResource.class));
+    resolver.init(APP_PATH, Collections.<Class<?>>singleton(MockResource.class));
   }
 
   @Test(expected = RuntimeException.class)
   public void testInitWithNotRootResource() throws Exception {
     ResourcePathResolverBase resolver = 
         new ResourcePathResolverBase(resourceClassIntrospector);
-    resolver.init(Collections.<Class<?>>singleton(Object.class));
+    resolver.init(APP_PATH, Collections.<Class<?>>singleton(Object.class));
   }
 
   @Test
@@ -112,6 +117,14 @@ public class ResourcePathResolverBaseTest {
             Collections.<List<Class<?>>, ResourceMethodDescriptor>emptyMap());
     
     resolver.resolve(pathContext, MockReferencingModel.class);
+  }
+  
+  private String makePath(String... segments) {
+    UriBuilder builder = UriBuilder.fromPath("");
+    for (String segment : segments) {
+      builder.path(segment);
+    }
+    return builder.toTemplate();
   }
   
 }
