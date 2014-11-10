@@ -67,17 +67,17 @@ class ResourcePathResolverBase implements ResourcePathResolver {
   
   /**
    * Initializes this resolver using the given set of root resource types.
-   * @param applicationPath the full application path
+   * @param appContextPath the full application path
    * @param rootResourceTypes set of JAX-RS root resource classes
    */
-  public void init(String applicationPath, Set<Class<?>> rootResourceTypes) {
+  public void init(String appContextPath, Set<Class<?>> rootResourceTypes) {
     for (Class<?> rootResourceType : rootResourceTypes) {
       Path path = rootResourceType.getAnnotation(Path.class);
       if (path == null) {
         throw new IllegalArgumentException(rootResourceType.getSimpleName() 
             + " is not a JAX-RS root resource");
       }
-      String qualifiedPath = UriBuilder.fromPath(applicationPath)
+      String qualifiedPath = UriBuilder.fromPath(appContextPath)
           .path(path.value())
           .toTemplate();
       

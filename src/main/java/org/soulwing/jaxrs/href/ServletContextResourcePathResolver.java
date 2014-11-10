@@ -20,6 +20,7 @@ package org.soulwing.jaxrs.href;
 
 import javax.servlet.ServletContext;
 import javax.ws.rs.Path;
+import javax.ws.rs.core.UriBuilder;
 
 import org.reflections.Reflections;
 import org.reflections.scanners.TypeAnnotationsScanner;
@@ -38,12 +39,15 @@ public class ServletContextResourcePathResolver
   /**
    * Initializes this resolver using the JAX-RS root resource classes 
    * discovered within the given servlet context.
-   * @param applicationPath the full JAX-RS application path
+   * @param applicationPath the JAX-RS application path
    * @param servletContext the subject servlet context
    */
   public void init(String applicationPath, ServletContext servletContext) {
-    init(applicationPath, 
-        reflections(servletContext).getTypesAnnotatedWith(Path.class));
+    String qualifiedPath = UriBuilder.fromPath(servletContext.getContextPath())
+        .path(applicationPath)
+        .toTemplate();
+    init(qualifiedPath, reflections(servletContext)
+        .getTypesAnnotatedWith(Path.class));
   }
 
   private Reflections reflections(ServletContext servletContext) {
