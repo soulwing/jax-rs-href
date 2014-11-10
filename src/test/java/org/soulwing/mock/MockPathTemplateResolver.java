@@ -19,7 +19,7 @@
 package org.soulwing.mock;
 
 import org.soulwing.jaxrs.href.PathTemplateResolver;
-import org.soulwing.jaxrs.href.ResourcePathContext;
+import org.soulwing.jaxrs.href.PathTemplateContext;
 
 /**
  * A mock {@link PathTemplateResolver}.
@@ -32,7 +32,7 @@ public class MockPathTemplateResolver implements PathTemplateResolver {
    * {@inheritDoc}
    */
   @Override
-  public String resolve(String template, ResourcePathContext context) {
+  public String resolve(String template, PathTemplateContext context) {
     return null;
   }
 

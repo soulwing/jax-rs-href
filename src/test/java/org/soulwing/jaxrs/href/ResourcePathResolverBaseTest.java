@@ -55,7 +55,7 @@ public class ResourcePathResolverBaseTest {
   private PathTemplateResolver templateResolver;
   
   @Mock
-  private ResourcePathContext pathContext;
+  private PathTemplateContext pathContext;
     
   @Test
   public void testInitWithRootResource() throws Exception {

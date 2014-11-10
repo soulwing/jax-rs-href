@@ -32,6 +32,6 @@ public interface PathTemplateResolver {
    * @param context context to be used in resolving placeholders
    * @return fully resolved path
    */
-  String resolve(String template, ResourcePathContext context);
+  String resolve(String template, PathTemplateContext context);
   
 }

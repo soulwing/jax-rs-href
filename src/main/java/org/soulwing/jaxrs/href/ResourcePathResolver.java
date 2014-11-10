@@ -35,6 +35,6 @@ public interface ResourcePathResolver {
    * @throws ResourceNotFoundException if no resource could be found 
    *    that is referenced by the given sequence of model types
    */
-  String resolve(ResourcePathContext context, Class<?>... modelTypes);
+  String resolve(PathTemplateContext context, Class<?>... modelTypes);
   
 }

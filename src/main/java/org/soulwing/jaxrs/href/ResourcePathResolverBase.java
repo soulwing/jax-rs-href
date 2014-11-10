@@ -87,7 +87,7 @@ class ResourcePathResolverBase implements ResourcePathResolver {
    * {@inheritDoc}
    */
   @Override
-  public String resolve(ResourcePathContext context, Class<?>... modelTypes) {
+  public String resolve(PathTemplateContext context, Class<?>... modelTypes) {
     ResourceMethodDescriptor descriptor = descriptorMap.get(
         Arrays.asList(modelTypes));
     if (descriptor == null) {

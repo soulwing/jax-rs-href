@@ -26,7 +26,7 @@ package org.soulwing.jaxrs.href;
  *
  * @author Carl Harris
  */
-public interface ResourcePathContext {
+public interface PathTemplateContext {
 
   /**
    * Gets a singleton object of the given type.
