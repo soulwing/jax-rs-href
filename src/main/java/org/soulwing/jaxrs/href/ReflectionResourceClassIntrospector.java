@@ -40,6 +40,16 @@ import javax.ws.rs.core.UriBuilder;
 class ReflectionResourceClassIntrospector 
     implements ResourceClassIntrospector {
 
+  private ReflectionService reflectionService;
+  
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void init(ReflectionService reflectionService) {
+    this.reflectionService = reflectionService;
+  }
+
   /**
    * {@inheritDoc}
    */
@@ -52,7 +62,11 @@ class ReflectionResourceClassIntrospector
       boolean resourceMethod = isResourceMethod(method);
       String resourcePath = resourcePath(parent, path);
       if (path != null && !resourceMethod) {
-        descriptors.addAll(describe(resourcePath, method.getReturnType()));
+        Class<?> returnType = method.getReturnType();
+        descriptors.addAll(describe(resourcePath, returnType));
+        for (Class<?> subtype : reflectionService.getSubTypesOf(returnType)) {
+          descriptors.addAll(describe(resourcePath, subtype));
+        }
       }
       else if (resourceMethod) {
         ResourceMethodDescriptor descriptor = describe(resourcePath, method);

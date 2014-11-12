@@ -19,7 +19,6 @@
 package org.soulwing.jaxrs.href;
 
 import javax.servlet.ServletContext;
-import javax.ws.rs.Path;
 import javax.ws.rs.core.UriBuilder;
 
 import org.reflections.Reflections;
@@ -34,7 +33,7 @@ import org.reflections.util.ConfigurationBuilder;
  * @author Carl Harris
  */
 public class ServletContextResourcePathResolver
-    extends ResourcePathResolverBase {
+    extends ReflectionResourcePathResolver {
 
   /**
    * Initializes this resolver using the JAX-RS root resource classes 
@@ -46,10 +45,13 @@ public class ServletContextResourcePathResolver
     String qualifiedPath = UriBuilder.fromPath(servletContext.getContextPath())
         .path(applicationPath)
         .toTemplate();
-    init(qualifiedPath, reflections(servletContext)
-        .getTypesAnnotatedWith(Path.class));
+    init(qualifiedPath, newReflectionService(servletContext));
   }
 
+  private ReflectionService newReflectionService(ServletContext servletContext) {
+    return new DelegatingReflectionService(reflections(servletContext));
+  }
+  
   private Reflections reflections(ServletContext servletContext) {
     return new Reflections(new ConfigurationBuilder()
         .addUrls(ClasspathHelper.forWebInfClasses(servletContext))      

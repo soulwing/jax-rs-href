@@ -32,7 +32,7 @@ import javax.ws.rs.core.UriBuilder;
  *
  * @author Carl Harris
  */
-class ResourcePathResolverBase implements ResourcePathResolver {
+class ReflectionResourcePathResolver implements ResourcePathResolver {
 
   private final Map<List<Class<?>>, ResourceMethodDescriptor> descriptorMap =
       new HashMap<>();
@@ -42,7 +42,7 @@ class ResourcePathResolverBase implements ResourcePathResolver {
   /**
    * Constructs a new instance.
    */
-  public ResourcePathResolverBase() {
+  public ReflectionResourcePathResolver() {
     this(new ReflectionResourceClassIntrospector());
   }
   
@@ -50,7 +50,7 @@ class ResourcePathResolverBase implements ResourcePathResolver {
    * Constructs a new instance.
    * @param resourceClassIntrospector
    */
-  ResourcePathResolverBase(
+  ReflectionResourcePathResolver(
       ResourceClassIntrospector resourceClassIntrospector) {
     this.resourceClassIntrospector = resourceClassIntrospector;
   }
@@ -59,7 +59,7 @@ class ResourcePathResolverBase implements ResourcePathResolver {
    * Constructs a new instance.
    * @param descriptorMap
    */
-  ResourcePathResolverBase(
+  ReflectionResourcePathResolver(
       Map<List<Class<?>>, ResourceMethodDescriptor> descriptorMap) {
     this.resourceClassIntrospector = null;
     this.descriptorMap.putAll(descriptorMap);
@@ -68,15 +68,14 @@ class ResourcePathResolverBase implements ResourcePathResolver {
   /**
    * Initializes this resolver using the given set of root resource types.
    * @param appContextPath the full application path
-   * @param rootResourceTypes set of JAX-RS root resource classes
+   * @param reflectionService set of JAX-RS root resource classes
    */
-  public void init(String appContextPath, Set<Class<?>> rootResourceTypes) {
+  public void init(String appContextPath, ReflectionService reflectionService) {
+    resourceClassIntrospector.init(reflectionService);
+    Set<Class<?>> rootResourceTypes = 
+        reflectionService.getTypesAnnotatedWith(Path.class);
     for (Class<?> rootResourceType : rootResourceTypes) {
       Path path = rootResourceType.getAnnotation(Path.class);
-      if (path == null) {
-        throw new IllegalArgumentException(rootResourceType.getSimpleName() 
-            + " is not a JAX-RS root resource");
-      }
       String qualifiedPath = UriBuilder.fromPath(appContextPath)
           .path(path.value())
           .toTemplate();

@@ -25,6 +25,7 @@ import static org.hamcrest.Matchers.is;
 import java.util.Collections;
 import java.util.List;
 
+import javax.ws.rs.Path;
 import javax.ws.rs.core.UriBuilder;
 
 import org.jmock.Expectations;
@@ -40,7 +41,7 @@ import org.soulwing.mock.MockResource;
  *
  * @author Carl Harris
  */
-public class ResourcePathResolverBaseTest {
+public class ReflectionResourcePathResolverTest {
   
   private static final String APP_PATH = "/appPath";
   
@@ -60,11 +61,17 @@ public class ResourcePathResolverBaseTest {
   
   @Mock
   private PathTemplateContext pathContext;
+  
+  @Mock
+  private ReflectionService reflectionService;
     
   @Test
   public void testInitWithRootResource() throws Exception {
     context.checking(new Expectations() {
       {
+        oneOf(resourceClassIntrospector).init(reflectionService);        
+        oneOf(reflectionService).getTypesAnnotatedWith(Path.class);
+        will(returnValue(Collections.<Class<?>>singleton(MockResource.class)));
         oneOf(resourceClassIntrospector).describe(
             makePath(APP_PATH, MockResource.PATH), 
             MockResource.class);
@@ -75,16 +82,9 @@ public class ResourcePathResolverBaseTest {
       }
     });
     
-    ResourcePathResolverBase resolver = 
-        new ResourcePathResolverBase(resourceClassIntrospector);
-    resolver.init(APP_PATH, Collections.<Class<?>>singleton(MockResource.class));
-  }
-
-  @Test(expected = RuntimeException.class)
-  public void testInitWithNotRootResource() throws Exception {
-    ResourcePathResolverBase resolver = 
-        new ResourcePathResolverBase(resourceClassIntrospector);
-    resolver.init(APP_PATH, Collections.<Class<?>>singleton(Object.class));
+    ReflectionResourcePathResolver resolver = 
+        new ReflectionResourcePathResolver(resourceClassIntrospector);
+    resolver.init(APP_PATH, reflectionService);
   }
 
   @Test
@@ -100,8 +100,8 @@ public class ResourcePathResolverBaseTest {
       }
     });
     
-    ResourcePathResolverBase resolver = 
-        new ResourcePathResolverBase(
+    ReflectionResourcePathResolver resolver = 
+        new ReflectionResourcePathResolver(
             Collections.singletonMap(
                 Collections.<Class<?>>singletonList(MockReferencingModel.class), 
                 descriptor));
@@ -112,8 +112,8 @@ public class ResourcePathResolverBaseTest {
   
   @Test(expected = ResourceNotFoundException.class)
   public void testResolveWhenNotFound() throws Exception {
-    ResourcePathResolverBase resolver = 
-        new ResourcePathResolverBase(
+    ReflectionResourcePathResolver resolver = 
+        new ReflectionResourcePathResolver(
             Collections.<List<Class<?>>, ResourceMethodDescriptor>emptyMap());
     
     resolver.resolve(pathContext, MockReferencingModel.class);

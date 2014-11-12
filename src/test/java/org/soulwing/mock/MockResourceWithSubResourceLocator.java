@@ -21,8 +21,8 @@ package org.soulwing.mock;
 import javax.ws.rs.Path;
 
 /**
- * A JAX-RS root resource
- *
+ * A JAX-RS resource with a subresource locator.
+ * 
  * @author Carl Harris
  */
 public class MockResourceWithSubResourceLocator {

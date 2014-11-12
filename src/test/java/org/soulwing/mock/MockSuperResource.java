@@ -1,7 +1,7 @@
 /*
- * File created on Nov 8, 2014 
+ * File created on Nov 12, 2014 
  *
- * Copyright (c) 2014 Carl Harris, Jr.
+ * Copyright (c) 2014 Virginia Polytechnic Institute and State University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,27 +18,11 @@
  */
 package org.soulwing.mock;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-
-import org.soulwing.jaxrs.href.ReferencedBy;
-import org.soulwing.jaxrs.href.TemplateResolver;
-
 /**
- * A mock resource.
+ * DESCRIBE THE TYPE HERE.
  *
  * @author Carl Harris
  */
-@Path(MockResource.PATH)
-public class MockResource implements MockSuperResource {
+public interface MockSuperResource {
 
-  public static final String PATH = "/resource";
-
-  @GET
-  @ReferencedBy(MockReferencingModel.class)
-  @TemplateResolver(MockPathTemplateResolver.class)
-  public Object resourceMethod() {
-    return null;
-  }
-  
 }

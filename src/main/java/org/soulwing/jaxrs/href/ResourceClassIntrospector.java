@@ -29,6 +29,12 @@ import java.util.Set;
 interface ResourceClassIntrospector {
   
   /**
+   * Initializes the recipient introspector.
+   * @param reflectionService reflection service
+   */
+  void init(ReflectionService reflectionService);
+  
+  /**
    * Produces a set of resource method descriptors for the given resource
    * class.
    * <p>

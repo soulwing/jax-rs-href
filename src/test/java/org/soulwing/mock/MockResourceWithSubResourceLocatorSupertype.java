@@ -18,27 +18,21 @@
  */
 package org.soulwing.mock;
 
-import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 
-import org.soulwing.jaxrs.href.ReferencedBy;
-import org.soulwing.jaxrs.href.TemplateResolver;
-
 /**
- * A mock resource.
+ * A JAX-RS resource with a resource locator that has a returns a supertype
+ * of an actual resource class.
  *
  * @author Carl Harris
  */
-@Path(MockResource.PATH)
-public class MockResource implements MockSuperResource {
+public class MockResourceWithSubResourceLocatorSupertype {
 
-  public static final String PATH = "/resource";
-
-  @GET
-  @ReferencedBy(MockReferencingModel.class)
-  @TemplateResolver(MockPathTemplateResolver.class)
-  public Object resourceMethod() {
-    return null;
-  }
+  public static final String PATH = "/subresource";
   
+  @Path(PATH)
+  public MockSuperResource resourceLocatorMethod() {
+    return new MockResource();
+  }
+
 }
