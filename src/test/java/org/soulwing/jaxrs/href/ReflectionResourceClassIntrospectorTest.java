@@ -20,13 +20,17 @@ package org.soulwing.jaxrs.href;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import javax.ws.rs.core.UriBuilder;
@@ -43,8 +47,11 @@ import org.soulwing.mock.MockResource;
 import org.soulwing.mock.MockResourceWithSubResourceLocator;
 import org.soulwing.mock.MockResourceWithSubResourceLocatorSupertype;
 import org.soulwing.mock.MockResourceWithSubResourceMethod;
+import org.soulwing.mock.MockResourceWithTwoSubResourceLocatorsSameSupertype;
 import org.soulwing.mock.MockResourceWithoutReferencedBy;
 import org.soulwing.mock.MockResourceWithoutTemplateResolver;
+import org.soulwing.mock.MockSubResource1;
+import org.soulwing.mock.MockSubResource2;
 import org.soulwing.mock.MockSuperResource;
 
 /**
@@ -85,8 +92,6 @@ public class ReflectionResourceClassIntrospectorTest {
   @Test
   @SuppressWarnings("rawtypes")
   public void testResourceWithSubResourceLocator() throws Exception {
-    context.checking(subtypesExpectations(MockResource.class, 
-        Collections.<Class<? extends MockResource>>emptySet()));
     Set<ResourceMethodDescriptor> descriptors = introspector.describe(
         ROOT, MockResourceWithSubResourceLocator.class);
     assertThat(descriptors, is(not(empty())));
@@ -116,6 +121,37 @@ public class ReflectionResourceClassIntrospectorTest {
         contains((Class) MockReferencingModel.class));
   }
 
+  @Test
+  public void testResourceWithTwoSubResourceLocatorsSameSupertype() throws Exception {
+    context.checking(subtypesExpectations(MockSuperResource.class, 
+        setOf(MockSubResource1.class, MockSubResource2.class)));
+    Set<ResourceMethodDescriptor> descriptors = introspector.describe(
+        ROOT, MockResourceWithTwoSubResourceLocatorsSameSupertype.class);
+    assertThat(descriptors, is(not(empty())));
+    Set<String> paths = new HashSet<>();
+    for (ResourceMethodDescriptor descriptor : descriptors) {
+      paths.add(descriptor.path());
+    }
+    assertThat(paths, containsInAnyOrder(
+        makePath(MockResourceWithTwoSubResourceLocatorsSameSupertype.PATH1,
+            MockSubResource1.PATH),
+        makePath(MockResourceWithTwoSubResourceLocatorsSameSupertype.PATH2,
+            MockSubResource2.PATH)));
+  }
+
+
+  /**
+   * Creates a list of objects.
+   * @param objs objects to place into the list
+   * @return new list containing all objects in {@code objs}
+   */
+  @SafeVarargs
+  private static <T> Set<T> setOf(T... objs) {
+    Set<T> result = new LinkedHashSet<>();
+    result.addAll(Arrays.asList(objs));
+    return result;
+  }
+  
   @Test
   @SuppressWarnings("rawtypes")
   public void testResourceWithSubResourceMethod() throws Exception {
@@ -152,7 +188,7 @@ public class ReflectionResourceClassIntrospectorTest {
       final Set<Class<? extends T>> subtypes) throws Exception {
     return new Expectations() {
       {
-        oneOf(reflectionService).getSubTypesOf(type);
+        allowing(reflectionService).getSubTypesOf(type);
         will(returnValue(subtypes));
       }
     };

@@ -19,7 +19,12 @@
 package org.soulwing.jaxrs.href;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 import javax.ws.rs.DELETE;
@@ -56,42 +61,79 @@ class ReflectionResourceClassIntrospector
   @Override
   public Set<ResourceMethodDescriptor> describe(String parent, 
       Class<?> resourceClass) {
+    List<Class<?>> requiredReferences = new ArrayList<>();
+    return describe(parent, resourceClass, requiredReferences);
+  }
+
+  private Set<ResourceMethodDescriptor> describe(String parent,
+      Class<?> type, List<Class<?>> requiredReferences) {
     Set<ResourceMethodDescriptor> descriptors = new LinkedHashSet<>();
-    for (Method method : resourceClass.getMethods()) {
-      Path path = method.getAnnotation(Path.class);
-      boolean resourceMethod = isResourceMethod(method);
-      String resourcePath = resourcePath(parent, path);
-      if (path != null && !resourceMethod) {
-        Class<?> returnType = method.getReturnType();
-        descriptors.addAll(describe(resourcePath, returnType));
-        for (Class<?> subtype : reflectionService.getSubTypesOf(returnType)) {
-          descriptors.addAll(describe(resourcePath, subtype));
-        }
+    if (type.isInterface() || (type.getModifiers() & Modifier.ABSTRACT) != 0) {
+      for (Class<?> subtype : reflectionService.getSubTypesOf(type)) {
+        descriptors.addAll(describe(parent, subtype, requiredReferences));
       }
-      else if (resourceMethod) {
-        ResourceMethodDescriptor descriptor = describe(resourcePath, method);
-        if (descriptor != null) {
-          descriptors.add(descriptor);
+    }
+    else {
+      for (Method method : type.getMethods()) {
+        Path path = method.getAnnotation(Path.class);
+        boolean resourceMethod = isResourceMethod(method);
+        String resourcePath = resourcePath(parent, path);
+        if (path != null && !resourceMethod) {
+          ReferencedBy referencedBy = method.getAnnotation(ReferencedBy.class);
+          List<Class<?>> required = referencedBy != null ? 
+              Arrays.asList(referencedBy.value()) : Collections.<Class<?>>emptyList();
+          Class<?> returnType = method.getReturnType();
+          descriptors.addAll(describe(resourcePath, returnType, 
+              ListUtil.concat(requiredReferences, required)));
+        }
+        else if (resourceMethod) {
+          ResourceMethodDescriptor descriptor = describe(resourcePath, method,
+              requiredReferences);
+          if (descriptor != null) {
+            descriptors.add(descriptor);
+          }
         }
       }
     }
     return descriptors;
   }
-
+  
   /**
-   * Creates a new resource path from a parent path and the path specified
-   * by a {@link Path} annotation.
-   * @param parent parent path
-   * @param path path annotation whose value is to be appended
-   * @return {@code parent} with the value of {@link Path} appended to it
+   * Produces a description for a resource method.
+   * @param path to the resource method
+   * @param method the subject resource method
+   * @param requiredReferences required subsequence of model reference types
+   * @return descriptor for resource method or {@code null} if the
+   *    resource method does not have a {@link ReferencedBy} annotation
+   *    or does not match the required subsequence of model types
    */
-  private String resourcePath(String parent, Path path) {
-    UriBuilder uriBuilder = UriBuilder.fromUri(parent);
-    if (path != null) {
-      uriBuilder.path(path.value());
+  private ResourceMethodDescriptor describe(String path, Method method,
+      List<Class<?>> requiredReferences) {
+    ReferencedBy ref = method.getAnnotation(ReferencedBy.class);
+    if (ref == null) return null;
+    if (!ListUtil.containsSubsequence(Arrays.asList(ref.value()), 
+        requiredReferences)) {
+      return null;
     }
-    String resourcePath = uriBuilder.toTemplate();
-    return resourcePath;
+
+    TemplateResolver resolver = method.getAnnotation(TemplateResolver.class);
+    if (resolver == null) {
+      throw new IllegalArgumentException(
+          "a referenced resource method must have a @" 
+              + TemplateResolver.class.getSimpleName() + " annotation");
+    }
+
+    try {
+      PathTemplateResolver templateResolver = resolver.value().newInstance();
+      ConcreteResourceMethodDescriptor descriptor = 
+          new ConcreteResourceMethodDescriptor(path, ref.value(), 
+              templateResolver);
+      return descriptor;
+    }
+    catch (InstantiationException | IllegalAccessException ex) {
+      throw new RuntimeException("cannot create resolver of type " 
+          + resolver.value().getName(), ex);
+    }
   }
 
   /**
@@ -112,32 +154,19 @@ class ReflectionResourceClassIntrospector
   }
 
   /**
-   * Produces a description for a resource method.
-   * @param path to the resource method
-   * @param method the subject resource method
-   * @return descriptor for resource method or {@code null} if the
-   *    resource method does not have a {@link ReferencedBy} annotation
+   * Creates a new resource path from a parent path and the path specified
+   * by a {@link Path} annotation.
+   * @param parent parent path
+   * @param path path annotation whose value is to be appended
+   * @return {@code parent} with the value of {@link Path} appended to it
    */
-  private ResourceMethodDescriptor describe(String path, Method method) {
-    ReferencedBy referencedBy = method.getAnnotation(ReferencedBy.class);
-    if (referencedBy == null) return null;
-
-    TemplateResolver resolver = method.getAnnotation(TemplateResolver.class);
-    if (resolver == null) {
-      throw new IllegalArgumentException(
-          "a referenced resource method must have a @" 
-              + TemplateResolver.class.getSimpleName() + " annotation");
+  private String resourcePath(String parent, Path path) {
+    UriBuilder uriBuilder = UriBuilder.fromUri(parent);
+    if (path != null) {
+      uriBuilder.path(path.value());
     }
-
-    try {
-      PathTemplateResolver templateResolver = resolver.value().newInstance();
-      return new ConcreteResourceMethodDescriptor(path, 
-          referencedBy.value(), templateResolver);
-    }
-    catch (InstantiationException | IllegalAccessException ex) {
-      throw new RuntimeException("cannot create resolver of type " 
-          + resolver.value().getName(), ex);
-    }
+    String resourcePath = uriBuilder.toTemplate();
+    return resourcePath;
   }
   
 }
