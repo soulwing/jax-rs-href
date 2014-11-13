@@ -71,4 +71,32 @@ class ConcreteResourceMethodDescriptor implements ResourceMethodDescriptor {
     return templateResolver;
   }
 
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
+    if (referencedBy.size() == 1) {
+      sb.append(referencedBy.get(0).getSimpleName());
+    }
+    else {
+      sb.append("[");
+      for (int i = 0, max = referencedBy.size(); i < max; i++) {
+        sb.append(referencedBy.get(i).getSimpleName());
+        if (i < max - 1) {
+          sb.append(", ");
+        }
+      }
+      sb.append("]");
+    }
+    sb.append(" => ");
+    sb.append(path);
+    sb.append(" (");
+    sb.append(templateResolver.getClass().getSimpleName());
+    sb.append(")");
+    return sb.toString();
+  }
+
+  
 }
