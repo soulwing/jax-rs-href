@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.soulwing</groupId>
   <artifactId>jax-rs-href</artifactId>
-  <version>1.0.2</version>
+  <version>1.0.3-SNAPSHOT</version>
   <name>JAX-RS HREF</name>
   <description>Resource location resolver for JAX-RS.</description>
   <organization>
@@ -12,7 +12,7 @@
     <connection>scm:git:git@github.com:soulwing/${project.artifactId}.git</connection>
     <developerConnection>${project.scm.connection}</developerConnection>
     <url>https://github.com/soulwing/${project.artifactId}</url>
-    <tag>REL-1.0.2</tag>
+    <tag>REL-1.0.3</tag>
   </scm>
   <properties>
     <java.version>1.7</java.version>
