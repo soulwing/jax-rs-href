@@ -27,6 +27,9 @@ import java.util.Set;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.UriBuilder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * A base implementation of {@link ResourcePathResolver}.
  *
@@ -34,6 +37,9 @@ import javax.ws.rs.core.UriBuilder;
  */
 class ReflectionResourcePathResolver implements ResourcePathResolver {
 
+  private static final Logger logger =       
+      LoggerFactory.getLogger(ReflectionResourcePathResolver.class);
+  
   private final Map<List<Class<?>>, ResourceMethodDescriptor> descriptorMap =
       new HashMap<>();
   
@@ -85,6 +91,9 @@ class ReflectionResourcePathResolver implements ResourcePathResolver {
       for (ResourceMethodDescriptor descriptor : descriptors) {
         descriptorMap.put(descriptor.referencedBy(), descriptor);
       }
+    }
+    for (ResourceMethodDescriptor descriptor : descriptorMap.values()) {
+      logger.info("mapping " + descriptor.toString());
     }
   }
   
