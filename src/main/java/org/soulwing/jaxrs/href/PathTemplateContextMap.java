@@ -40,19 +40,7 @@ public class PathTemplateContextMap implements PathTemplateContext {
   @Override
   @SuppressWarnings("unchecked")
   public <T> T get(Class<T> type) {
-    Object result = null;
-    for (Object obj : set) {
-      if (type.isAssignableFrom(obj.getClass())) {
-        if (result == null) {
-          result = obj;
-        }
-        else {
-          throw new IllegalStateException(
-              "expected no more than one instance of type " 
-              + type.getName());
-        }
-      }
-    }
+    Object result = getOptional(type);
     if (result == null) {
       throw new NullPointerException("found no instance of type "
           + type.getName());
@@ -65,13 +53,46 @@ public class PathTemplateContextMap implements PathTemplateContext {
    */
   @Override
   @SuppressWarnings("unchecked")
+  public <T> T getOptional(Class<T> type) {
+    Object result = null;
+    for (Object obj : set) {
+      if (type.isAssignableFrom(obj.getClass())) {
+        if (result == null) {
+          result = obj;
+        }
+        else {
+          throw new IllegalStateException(
+              "expected no more than one instance of type "
+                  + type.getName());
+        }
+      }
+    }
+    return (T) result;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  @SuppressWarnings("unchecked")
   public <T> T get(String name, Class<T> type) {
-    Object value = map.get(name);
+    Object value = getOptional(name, type);
     if (value == null) {
       throw new NullPointerException("found no object named '" + name + "'");
     }
+    return (T) value;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  @SuppressWarnings("unchecked")
+  public <T> T getOptional(String name, Class<T> type) {
+    Object value = map.get(name);
+    if (value == null) return null;
     if (!type.isAssignableFrom(value.getClass())) {
-      throw new ClassCastException("found object of type " 
+      throw new ClassCastException("found object of type "
           + value.getClass().getName()
           + "; expected " + type.getName());
     }

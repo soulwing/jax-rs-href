@@ -20,6 +20,7 @@ package org.soulwing.jaxrs.href;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
 
 import org.junit.Test;
@@ -32,11 +33,19 @@ import org.soulwing.jaxrs.href.PathTemplateContextMap.Entry;
  */
 public class PathTemplateContextMapTest {
 
+
   @Test(expected = NullPointerException.class)
   public void testGetByTypeWhenNoneFound() throws Exception {
     PathTemplateContextMap.with().get(MockContextObject.class);
   }
-  
+
+  @Test
+  public void testGetOptionalByTypeWhenNoneFound() throws Exception {
+    assertThat(PathTemplateContextMap.with().getOptional(MockContextObject.class),
+        is(nullValue()));
+  }
+
+
   @Test
   public void testGetByTypeWithSingleton() throws Exception {
     MockContextObject obj = new MockContextObject();
@@ -63,6 +72,13 @@ public class PathTemplateContextMapTest {
   @Test(expected = NullPointerException.class)
   public void testGetByNameWhenNotFound() throws Exception {
     PathTemplateContextMap.with().get("mock", MockContextObject.class);
+  }
+
+  @Test
+  public void testGetOptionalByNameWhenNotFound() throws Exception {
+    assertThat(
+        PathTemplateContextMap.with().getOptional("mock", MockContextObject.class),
+        is(nullValue()));
   }
 
   @Test(expected = ClassCastException.class)

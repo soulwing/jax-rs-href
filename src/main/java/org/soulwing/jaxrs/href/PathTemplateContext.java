@@ -37,18 +37,39 @@ public interface PathTemplateContext {
    *    given type
    */
   <T> T get(Class<T> type);
-  
+
+  /**
+   * Gets a singleton object of the given type.
+   * @param type the type of object to retrieve
+   * @return singleton instance of the given type or {@code null} if there
+   *    is no object of the given type
+   * @throws IllegalStateException if there is more than one object of the
+   *    given type
+   */
+  <T> T getOptional(Class<T> type);
+
   /**
    * Gets a named object of the given type.
    * @param name name of the object to retrieve
    * @param type expected type of the named object
    * @return instance of the given type that corresponds to the given name
-   * @throws NullPointerPointer exception if there is no object with the
+   * @throws NullPointerException exception if there is no object with the
    *    given name
    * @throws ClassCastException if the object with the given name does not
    *    have the expected type
    * 
    */
   <T> T get(String name, Class<T> type);
-  
+
+  /**
+   * Gets a named object of the given type.
+   * @param name name of the object to retrieve
+   * @param type expected type of the named object
+   * @return instance of the given type that corresponds to the given name
+   *    or {@code null} if no such instance exists
+   * @throws ClassCastException if the object with the given name does not
+   *    have the expected type
+   */
+  <T> T getOptional(String name, Class<T> type);
+
 }
