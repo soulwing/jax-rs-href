@@ -12,3 +12,5 @@ direct HTTP requests to that resource.
 This module provides a simple annotation-based mechanism that allows
 a model builder for a resource to resolve a path to a referenced 
 resource.
+
+TODO: need to provide some examples of how this thing gets used.
