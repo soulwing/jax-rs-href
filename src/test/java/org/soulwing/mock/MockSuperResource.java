@@ -1,7 +1,7 @@
 /*
  * File created on Nov 12, 2014 
  *
- * Copyright (c) 2014 Virginia Polytechnic Institute and State University
+ * Copyright (c) 2014 Carl Harris
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 package org.soulwing.mock;
 
 /**
- * DESCRIBE THE TYPE HERE.
+ * A mock parent resource.
  *
  * @author Carl Harris
  */
