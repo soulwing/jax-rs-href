@@ -41,7 +41,15 @@ interface ResourceMethodDescriptor {
    * @return
    */
   List<Class<?>> referencedBy();
-  
+
+  /**
+   * Tests whether the given model path matches this method descriptor.
+   * @param modelPath the model path to test
+   * @return {@code true} if {@code modelPath} matches the path of model
+   *    references associated with this method descriptor
+   */
+  boolean matches(Class<?>... modelPath);
+
   /**
    * Gets a template resolver instance to use in resolving the path template
    * for the described resource method.

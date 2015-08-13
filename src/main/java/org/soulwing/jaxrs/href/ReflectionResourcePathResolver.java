@@ -18,10 +18,9 @@
  */
 package org.soulwing.jaxrs.href;
 
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import javax.ws.rs.Path;
@@ -40,8 +39,8 @@ class ReflectionResourcePathResolver implements ResourcePathResolver {
   private static final Logger logger =       
       LoggerFactory.getLogger(ReflectionResourcePathResolver.class);
   
-  private final Map<List<Class<?>>, ResourceMethodDescriptor> descriptorMap =
-      new HashMap<>();
+  private final Set<ResourceMethodDescriptor> descriptors =
+      new HashSet<>();
   
   private final ResourceClassIntrospector resourceClassIntrospector;
   
@@ -54,7 +53,7 @@ class ReflectionResourcePathResolver implements ResourcePathResolver {
   
   /**
    * Constructs a new instance.
-   * @param resourceClassIntrospector
+   * @param resourceClassIntrospector resource introspector
    */
   ReflectionResourcePathResolver(
       ResourceClassIntrospector resourceClassIntrospector) {
@@ -63,14 +62,14 @@ class ReflectionResourcePathResolver implements ResourcePathResolver {
 
   /**
    * Constructs a new instance.
-   * @param descriptorMap
+   * @param descriptors resource method descriptors
    */
   ReflectionResourcePathResolver(
-      Map<List<Class<?>>, ResourceMethodDescriptor> descriptorMap) {
+      Set<ResourceMethodDescriptor> descriptors) {
     this.resourceClassIntrospector = null;
-    this.descriptorMap.putAll(descriptorMap);
+    this.descriptors.addAll(descriptors);
   }
-  
+
   /**
    * Initializes this resolver using the given set of root resource types.
    * @param appContextPath the full application path
@@ -85,14 +84,11 @@ class ReflectionResourcePathResolver implements ResourcePathResolver {
       String qualifiedPath = UriBuilder.fromPath(appContextPath)
           .path(path.value())
           .toTemplate();
-      
-      Set<ResourceMethodDescriptor> descriptors = 
-          resourceClassIntrospector.describe(qualifiedPath, rootResourceType);
-      for (ResourceMethodDescriptor descriptor : descriptors) {
-        descriptorMap.put(descriptor.referencedBy(), descriptor);
-      }
+
+      descriptors.addAll(resourceClassIntrospector
+          .describe(qualifiedPath, rootResourceType));
     }
-    for (ResourceMethodDescriptor descriptor : descriptorMap.values()) {
+    for (ResourceMethodDescriptor descriptor : descriptors) {
       logger.info("mapping " + descriptor.toString());
     }
   }
@@ -102,13 +98,30 @@ class ReflectionResourcePathResolver implements ResourcePathResolver {
    */
   @Override
   public String resolve(PathTemplateContext context, Class<?>... modelTypes) {
-    ResourceMethodDescriptor descriptor = descriptorMap.get(
-        Arrays.asList(modelTypes));
-    if (descriptor == null) {
+    final ResourceMethodDescriptor descriptor = findUniqueMatch(modelTypes);
+    return descriptor.templateResolver().resolve(descriptor.path(), context);
+  }
+
+  private ResourceMethodDescriptor findUniqueMatch(Class<?>[] modelTypes) {
+    List<ResourceMethodDescriptor> matches = findAllMatches(modelTypes);
+    int numMatches = matches.size();
+    if (numMatches == 0) {
       throw new ResourceNotFoundException(modelTypes);
     }
-    
-    return descriptor.templateResolver().resolve(descriptor.path(), context);
+    if (numMatches > 1) {
+      throw new AmbiguousPathResolutionException(modelTypes, matches);
+    }
+    return matches.get(0);
+  }
+
+  private List<ResourceMethodDescriptor> findAllMatches(Class<?>[] modelTypes) {
+    List<ResourceMethodDescriptor> matches = new ArrayList<>();
+    for (ResourceMethodDescriptor descriptor : descriptors) {
+      if (descriptor.matches(modelTypes)) {
+        matches.add(descriptor);
+      }
+    }
+    return matches;
   }
 
 }

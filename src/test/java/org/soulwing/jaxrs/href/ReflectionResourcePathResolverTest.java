@@ -23,7 +23,9 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.ws.rs.Path;
 import javax.ws.rs.core.UriBuilder;
@@ -73,12 +75,9 @@ public class ReflectionResourcePathResolverTest {
         oneOf(reflectionService).getTypesAnnotatedWith(Path.class);
         will(returnValue(Collections.<Class<?>>singleton(MockResource.class)));
         oneOf(resourceClassIntrospector).describe(
-            makePath(APP_PATH, MockResource.PATH), 
+            makePath(APP_PATH, MockResource.PATH),
             MockResource.class);
         will(returnValue(Collections.singleton(descriptor)));
-        oneOf(descriptor).referencedBy();
-        will(returnValue(
-            Collections.singletonList(MockReferencingModel.class)));
       }
     });
     
@@ -91,6 +90,8 @@ public class ReflectionResourcePathResolverTest {
   public void testResolve() throws Exception {
     context.checking(new Expectations() {
       {
+        oneOf(descriptor).matches(MockReferencingModel.class);
+        will(returnValue(true));
         oneOf(descriptor).path();
         will(returnValue(PATH));
         oneOf(descriptor).templateResolver();
@@ -102,19 +103,44 @@ public class ReflectionResourcePathResolverTest {
     
     ReflectionResourcePathResolver resolver = 
         new ReflectionResourcePathResolver(
-            Collections.singletonMap(
-                Collections.<Class<?>>singletonList(MockReferencingModel.class), 
-                descriptor));
-    
+            Collections.singleton(descriptor));
+
     assertThat(resolver.resolve(pathContext, MockReferencingModel.class),
         is(equalTo(PATH)));
   }
-  
+
+  @Test(expected = AmbiguousPathResolutionException.class)
+  public void testResolveWhenAmbiguous() throws Exception {
+    final ResourceMethodDescriptor descriptor1 =
+        context.mock(ResourceMethodDescriptor.class, "descriptor1");
+    final ResourceMethodDescriptor descriptor2 =
+        context.mock(ResourceMethodDescriptor.class, "descriptor2");
+
+    final Set<ResourceMethodDescriptor> descriptors = new HashSet<>();
+    descriptors.add(descriptor1);
+    descriptors.add(descriptor2);
+
+    context.checking(new Expectations() {
+      {
+        oneOf(descriptor1).matches(MockReferencingModel.class);
+        will(returnValue(true));
+        oneOf(descriptor2).matches(MockReferencingModel.class);
+        will(returnValue(true));
+      }
+    });
+
+    ReflectionResourcePathResolver resolver =
+        new ReflectionResourcePathResolver(descriptors);
+
+    assertThat(resolver.resolve(pathContext, MockReferencingModel.class),
+        is(equalTo(PATH)));
+  }
+
   @Test(expected = ResourceNotFoundException.class)
   public void testResolveWhenNotFound() throws Exception {
-    ReflectionResourcePathResolver resolver = 
+    ReflectionResourcePathResolver resolver =
         new ReflectionResourcePathResolver(
-            Collections.<List<Class<?>>, ResourceMethodDescriptor>emptyMap());
+            Collections.<ResourceMethodDescriptor>emptySet());
     
     resolver.resolve(pathContext, MockReferencingModel.class);
   }

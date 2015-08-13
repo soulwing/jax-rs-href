@@ -126,7 +126,7 @@ class ReflectionResourceClassIntrospector
     try {
       PathTemplateResolver templateResolver = resolver.value().newInstance();
       ConcreteResourceMethodDescriptor descriptor = 
-          new ConcreteResourceMethodDescriptor(path, ref.value(), 
+          new ConcreteResourceMethodDescriptor(method, path, ref.value(),
               templateResolver);
       return descriptor;
     }

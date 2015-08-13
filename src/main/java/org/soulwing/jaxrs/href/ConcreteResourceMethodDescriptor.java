@@ -18,6 +18,7 @@
  */
 package org.soulwing.jaxrs.href;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 
@@ -28,23 +29,28 @@ import java.util.List;
  */
 class ConcreteResourceMethodDescriptor implements ResourceMethodDescriptor {
 
+  private final Method method;
   private final String path;
- 
   private final List<Class<?>> referencedBy;
-  
+  private final GlobMatcher<Class<?>> matcher;
   private final PathTemplateResolver templateResolver;
   
   /**
    * Constructs a new instance.
-   * @param path
-   * @param referencedBy
-   * @param templateResolver
+   * @param method resource method
+   * @param path resource path template
+   * @param referencedBy model path
+   * @param templateResolver path template resolver
    */
-  public ConcreteResourceMethodDescriptor(String path, Class<?>[] referencedBy, 
+  public ConcreteResourceMethodDescriptor(Method method,
+      String path, Class<?>[] referencedBy,
       PathTemplateResolver templateResolver) {
+    this.method = method;
     this.path = path;
     this.referencedBy = Arrays.asList(referencedBy);
     this.templateResolver = templateResolver;
+    this.matcher = new GlobMatcher<>(AnyModel.class, AnyModelSequence.class,
+        referencedBy);
   }
 
   /**
@@ -67,6 +73,14 @@ class ConcreteResourceMethodDescriptor implements ResourceMethodDescriptor {
    * {@inheritDoc}
    */
   @Override
+  public boolean matches(Class<?>... modelPath) {
+    return matcher.matches(modelPath);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public PathTemplateResolver templateResolver() {
     return templateResolver;
   }
@@ -78,12 +92,12 @@ class ConcreteResourceMethodDescriptor implements ResourceMethodDescriptor {
   public String toString() {
     StringBuilder sb = new StringBuilder();
     if (referencedBy.size() == 1) {
-      sb.append(referencedBy.get(0).getSimpleName());
+      sb.append(modelClassAsString(referencedBy.get(0)));
     }
     else {
       sb.append("[");
       for (int i = 0, max = referencedBy.size(); i < max; i++) {
-        sb.append(referencedBy.get(i).getSimpleName());
+        sb.append(modelClassAsString(referencedBy.get(i)));
         if (i < max - 1) {
           sb.append(", ");
         }
@@ -92,11 +106,27 @@ class ConcreteResourceMethodDescriptor implements ResourceMethodDescriptor {
     }
     sb.append(" => ");
     sb.append(path);
-    sb.append(" (");
+    sb.append(" [method=");
+    sb.append(method.getDeclaringClass().getSimpleName());
+    sb.append(".");
+    sb.append(method.getName());
+    sb.append(" , resolver=");
     sb.append(templateResolver.getClass().getSimpleName());
-    sb.append(")");
+    sb.append("]");
     return sb.toString();
   }
 
-  
+  private String modelClassAsString(Class<?> modelClass) {
+    if (AnyModelSequence.class.equals(modelClass)) {
+      return "*";
+    }
+    else if (AnyModel.class.equals(modelClass)) {
+      return "?";
+    }
+    else {
+      return modelClass.getSimpleName();
+    }
+  }
+
+
 }

@@ -31,7 +31,10 @@ public interface PathTemplateResolver {
    * Resolves placeholders in the given template to produce a path.
    * @param context context to be used in resolving placeholders
    * @return fully resolved path
+   * @throws AmbiguousPathResolutionException if the path in the given
+   *    context resolves to more than one resource method
    */
-  String resolve(String template, PathTemplateContext context);
+  String resolve(String template, PathTemplateContext context)
+      throws AmbiguousPathResolutionException;
   
 }
