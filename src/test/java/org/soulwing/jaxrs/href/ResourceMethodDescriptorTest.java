@@ -27,11 +27,11 @@ import org.junit.Rule;
 import org.junit.Test;
 
 /**
- * Unit tests for {@link ConcreteResourceMethodDescriptor}.
+ * Unit tests for {@link ResourceMethodDescriptor}.
  *
  * @author Carl Harris
  */
-public class ConcreteResourceMethodDescriptorTest {
+public class ResourceMethodDescriptorTest {
 
   @Rule
   public final JUnitRuleMockery context = new JUnitRuleMockery();
@@ -81,10 +81,11 @@ public class ConcreteResourceMethodDescriptorTest {
         .matches(Model1.class, Model2.class, Model3.class), is(true));
   }
 
-  private ConcreteResourceMethodDescriptor descriptorWith(
+  private ResourceMethodDescriptor descriptorWith(
       Class<?>... modelPath) throws Exception {
-    return new ConcreteResourceMethodDescriptor(
-        Object.class.getMethod("toString"), "somePath", modelPath, resolver);
+    return new ResourceMethodDescriptor(
+        Object.class.getMethod("toString"), "somePath",
+            ModelPath.with(modelPath), resolver);
   }
 
   interface Model1 {}

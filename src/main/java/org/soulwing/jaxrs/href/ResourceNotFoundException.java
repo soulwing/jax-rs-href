@@ -28,25 +28,12 @@ public class ResourceNotFoundException extends RuntimeException {
 
   private static final long serialVersionUID = 3381534707381732991L;
 
-  public ResourceNotFoundException(Class<?>... modelTypes) {
+  public ResourceNotFoundException(ModelPath modelPath) {
     super("cannot resolve a resource referenced by model types "
-        + modelTypesToString(modelTypes)
+        + modelPath
         + "; perhaps you need to apply the @"
         + ReferencedBy.class.getSimpleName() 
         + " annotation to desired resource"); 
   }
-  
-  private static String modelTypesToString(Class<?>... modelTypes) {
-    StringBuilder sb = new StringBuilder();
-    sb.append("[");
-    for (int i = 0; i < modelTypes.length; i++) {
-      sb.append(modelTypes[i].getSimpleName());
-      if (i < modelTypes.length - 1) {
-        sb.append(", ");
-      }
-    }
-    sb.append("]");
-    return sb.toString();
-  }
-  
+
 }

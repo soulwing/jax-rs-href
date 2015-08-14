@@ -19,6 +19,7 @@
 package org.soulwing.jaxrs.href;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import java.util.Set;
 
 /**
@@ -41,5 +42,48 @@ public interface ReflectionService {
    * @return set of classes
    */
   Set<Class<?>> getTypesAnnotatedWith(Class<? extends Annotation> annotation);
+
+  /**
+   * Gets an annotation on a type.
+   * @param subjectType the subject type
+   * @param annotationType class representating the annotation type
+   * @param <A> annotation type
+   * @return annotation instance or {@code null} if there is no annotation of
+   *    type {@code A} on {@code subjectType}
+   */
+  <A extends Annotation> A getAnnotation(Class<?> subjectType,
+      Class<A> annotationType);
+
+  /**
+   * Gets an annotation on a method.
+   * @param subjectMethod the subject method
+   * @param annotationType class representating the annotation type
+   * @param <A> annotation type
+   * @return annotation instance or {@code null} if there is no annotation of
+   *    type {@code A} on {@code subjectType}
+   */
+  <A extends Annotation> A getAnnotation(Method subjectMethod,
+      Class<A> annotationType);
+
+  /**
+   * Tests whether the given type is an interface or abstract class.
+   * @param type the subject type
+   * @return {@code true} if {@code type} is an interface or an abstract class
+   */
+  boolean isAbstractType(Class<?> type);
+
+  /**
+   * Gets the public methods of the given type.
+   * @param type the subject type
+   * @return array containing the public methods of {@code type}
+   */
+  Method[] getMethods(Class<?> type);
+
+  /**
+   * Gets the return type of the given method.
+   * @param method the subject method
+   * @return return type
+   */
+  Class<?> getReturnType(Method method);
 
 }

@@ -1,28 +1,36 @@
 /*
- * File created on Nov 9, 2014 
+ * File created on Aug 14, 2015
  *
- * Copyright (c) 2014 Carl Harris, Jr.
+ * Copyright (c) 2015 Carl Harris, Jr
+ * and others as noted
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
-package org.soulwing.mock;
+package org.soulwing.jaxrs.href;
 
 /**
- * A mock model that references a resource method.
+ * A factory that produces {@link ResourcePathResolver} objects.
  *
  * @author Carl Harris
  */
-public interface MockReferencingModel2 {
+public interface ResourcePathResolverFactory {
+
+  /**
+   * Constructs a new {@link ResourcePathResolver}.
+   * @return resource path resolver
+   * @throws ResourceConfigurationException if a configuration error is
+   *    discovered
+   */
+  ResourcePathResolver newResolver() throws ResourceConfigurationException;
 
 }

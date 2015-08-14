@@ -18,7 +18,6 @@
  */
 package org.soulwing.jaxrs.href;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -29,16 +28,16 @@ import java.util.List;
  */
 public class AmbiguousPathResolutionException extends RuntimeException {
 
-  public AmbiguousPathResolutionException(Class<?>[] modelPath,
-      List<ResourceMethodDescriptor> methodDescriptors) {
+  public AmbiguousPathResolutionException(ModelPath modelPath,
+      List<ResourceDescriptor> methodDescriptors) {
     super(createMessage(modelPath, methodDescriptors));
   }
 
-  private static String createMessage(Class<?>[] modelPath,
-      List<ResourceMethodDescriptor> methodDescriptors) {
+  private static String createMessage(ModelPath modelPath,
+      List<ResourceDescriptor> methodDescriptors) {
     StringBuilder sb = new StringBuilder();
-    sb.append(Arrays.asList(modelPath));
-    sb.append("matches multiple resource methods: ");
+    sb.append(modelPath);
+    sb.append(" matches multiple resource methods: ");
     sb.append(methodDescriptors);
     return sb.toString();
   }

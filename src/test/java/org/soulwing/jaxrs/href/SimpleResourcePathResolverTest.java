@@ -22,12 +22,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import javax.ws.rs.Path;
 import javax.ws.rs.core.UriBuilder;
 
 import org.jmock.Expectations;
@@ -35,15 +29,13 @@ import org.jmock.auto.Mock;
 import org.jmock.integration.junit4.JUnitRuleMockery;
 import org.junit.Rule;
 import org.junit.Test;
-import org.soulwing.mock.MockReferencingModel;
-import org.soulwing.mock.MockResource;
 
 /**
- * Unit tests for {@link ResourceBaseResolverBase}.
+ * Unit tests for {@link SimpleResourcePathResolver}.
  *
  * @author Carl Harris
  */
-public class ReflectionResourcePathResolverTest {
+public class SimpleResourcePathResolverTest {
   
   private static final String APP_PATH = "/appPath";
   
@@ -53,10 +45,7 @@ public class ReflectionResourcePathResolverTest {
   public final JUnitRuleMockery context = new JUnitRuleMockery();
   
   @Mock
-  private ResourceClassIntrospector resourceClassIntrospector;
-  
-  @Mock
-  private ResourceMethodDescriptor descriptor;
+  private ResourceDescriptor descriptor;
   
   @Mock
   private PathTemplateResolver templateResolver;
@@ -66,31 +55,14 @@ public class ReflectionResourcePathResolverTest {
   
   @Mock
   private ReflectionService reflectionService;
-    
-  @Test
-  public void testInitWithRootResource() throws Exception {
-    context.checking(new Expectations() {
-      {
-        oneOf(resourceClassIntrospector).init(reflectionService);        
-        oneOf(reflectionService).getTypesAnnotatedWith(Path.class);
-        will(returnValue(Collections.<Class<?>>singleton(MockResource.class)));
-        oneOf(resourceClassIntrospector).describe(
-            makePath(APP_PATH, MockResource.PATH),
-            MockResource.class);
-        will(returnValue(Collections.singleton(descriptor)));
-      }
-    });
-    
-    ReflectionResourcePathResolver resolver = 
-        new ReflectionResourcePathResolver(resourceClassIntrospector);
-    resolver.init(APP_PATH, reflectionService);
-  }
+
+  private SimpleResourcePathResolver resolver = new SimpleResourcePathResolver();
 
   @Test
   public void testResolve() throws Exception {
     context.checking(new Expectations() {
       {
-        oneOf(descriptor).matches(MockReferencingModel.class);
+        oneOf(descriptor).matches(ModelPath.with(Object.class));
         will(returnValue(true));
         oneOf(descriptor).path();
         will(returnValue(PATH));
@@ -100,49 +72,37 @@ public class ReflectionResourcePathResolverTest {
         will(returnValue(PATH));
       }
     });
-    
-    ReflectionResourcePathResolver resolver = 
-        new ReflectionResourcePathResolver(
-            Collections.singleton(descriptor));
 
-    assertThat(resolver.resolve(pathContext, MockReferencingModel.class),
+    resolver.addDescriptor(descriptor);
+    assertThat(resolver.resolve(pathContext, Object.class),
         is(equalTo(PATH)));
   }
 
   @Test(expected = AmbiguousPathResolutionException.class)
   public void testResolveWhenAmbiguous() throws Exception {
-    final ResourceMethodDescriptor descriptor1 =
-        context.mock(ResourceMethodDescriptor.class, "descriptor1");
-    final ResourceMethodDescriptor descriptor2 =
-        context.mock(ResourceMethodDescriptor.class, "descriptor2");
-
-    final Set<ResourceMethodDescriptor> descriptors = new HashSet<>();
-    descriptors.add(descriptor1);
-    descriptors.add(descriptor2);
+    final ResourceDescriptor descriptor1 =
+        context.mock(ResourceDescriptor.class, "descriptor1");
+    final ResourceDescriptor descriptor2 =
+        context.mock(ResourceDescriptor.class, "descriptor2");
 
     context.checking(new Expectations() {
       {
-        oneOf(descriptor1).matches(MockReferencingModel.class);
+        oneOf(descriptor1).matches(ModelPath.with(Object.class));
         will(returnValue(true));
-        oneOf(descriptor2).matches(MockReferencingModel.class);
+        oneOf(descriptor2).matches(ModelPath.with(Object.class));
         will(returnValue(true));
       }
     });
 
-    ReflectionResourcePathResolver resolver =
-        new ReflectionResourcePathResolver(descriptors);
-
-    assertThat(resolver.resolve(pathContext, MockReferencingModel.class),
+    resolver.addDescriptor(descriptor1);
+    resolver.addDescriptor(descriptor2);
+    assertThat(resolver.resolve(pathContext, Object.class),
         is(equalTo(PATH)));
   }
 
   @Test(expected = ResourceNotFoundException.class)
   public void testResolveWhenNotFound() throws Exception {
-    ReflectionResourcePathResolver resolver =
-        new ReflectionResourcePathResolver(
-            Collections.<ResourceMethodDescriptor>emptySet());
-    
-    resolver.resolve(pathContext, MockReferencingModel.class);
+    resolver.resolve(pathContext, Object.class);
   }
   
   private String makePath(String... segments) {

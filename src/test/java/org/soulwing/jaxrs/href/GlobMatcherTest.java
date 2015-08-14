@@ -83,7 +83,7 @@ public class GlobMatcherTest {
   }
 
   private GlobMatcher<Character> matcher(String pattern) {
-    return new GlobMatcher<Character>('?', '*', stringToArray(pattern));
+    return GlobMatcher.<Character>with('?', '*', stringToArray(pattern));
   }
 
   private Character[] stringToArray(String s) {

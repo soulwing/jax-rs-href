@@ -64,6 +64,17 @@ class GlobMatcher<T> {
         pattern);
   }
 
+  public static <T> GlobMatcher<T> with(T anyInputToken, T anyInputSequenceToken,
+      T[] pattern) {
+    return new GlobMatcher<>(anyInputToken, anyInputSequenceToken, pattern);
+  }
+
+  public static GlobMatcher<Class<?>> with(Class<?> anyInputToken,
+      Class<?> anyInputSequenceToken, ModelPath pattern) {
+    return new GlobMatcher<>(anyInputToken, anyInputSequenceToken,
+        pattern.asArray());
+  }
+
   /**
    * Tests the given input as a match for this pattern.
    * @param input the input to test

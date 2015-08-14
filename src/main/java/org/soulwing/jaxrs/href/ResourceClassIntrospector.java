@@ -46,6 +46,6 @@ interface ResourceClassIntrospector {
    * @param resourceClass the subject resource class
    * @return set of resource method descriptors
    */
-  Set<ResourceMethodDescriptor> describe(String path, Class<?> resourceClass);
+  Set<ResourceDescriptor> describe(String path, Class<?> resourceClass);
   
 }

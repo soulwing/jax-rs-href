@@ -19,13 +19,15 @@
 package org.soulwing.jaxrs.href;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Set;
 
 import org.reflections.Reflections;
 
 /**
  * A {@link ReflectionService} that delegates to the {@link Reflections}
- * utility.
+ * utility and the Java Reflection API.
  *
  * @author Carl Harris
  */
@@ -56,6 +58,48 @@ public class DelegatingReflectionService implements ReflectionService {
   public Set<Class<?>> getTypesAnnotatedWith(
       Class<? extends Annotation> annotation) {
     return reflections.getTypesAnnotatedWith(annotation);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public <A extends Annotation> A getAnnotation(Class<?> subjectType,
+      Class<A> annotationType) {
+    return subjectType.getAnnotation(annotationType);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public <A extends Annotation> A getAnnotation(Method subjectMethod,
+      Class<A> annotationType) {
+    return subjectMethod.getAnnotation(annotationType);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean isAbstractType(Class<?> type) {
+    return type.isInterface() || (type.getModifiers() & Modifier.ABSTRACT) != 0;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public Method[] getMethods(Class<?> type) {
+    return type.getMethods();
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public Class<?> getReturnType(Method method) {
+    return method.getReturnType();
   }
 
 }
