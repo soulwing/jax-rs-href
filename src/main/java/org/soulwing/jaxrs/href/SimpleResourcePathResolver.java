@@ -55,13 +55,17 @@ class SimpleResourcePathResolver implements ConfigurableResourcePathResolver {
   public void validate() throws ResourceConfigurationException {
     List<List<Class<?>>> duplicatedPaths = findDuplicatedPaths(createPathList());
     // log resources whose paths are duplicated
+    boolean foundDuplicates = false;
     for (ResourceDescriptor descriptor : descriptors) {
       if (duplicatedPaths.contains(replaceWildcards(
           descriptor.referencedBy().asList()))) {
         logger.error("duplicate resource descriptor: {}", descriptor);
+        foundDuplicates = true;
       }
     }
-    throw new ResourceConfigurationException("not implemented");
+    if (foundDuplicates) {
+      throw new ResourceConfigurationException("found duplicate resource descriptors");
+    }
   }
 
   private List<List<Class<?>>> findDuplicatedPaths(List<List<Class<?>>> paths) {
