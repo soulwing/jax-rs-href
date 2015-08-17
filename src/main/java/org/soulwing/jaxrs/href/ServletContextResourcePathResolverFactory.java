@@ -73,7 +73,6 @@ public class ServletContextResourcePathResolverFactory
     resourceDiscoveryService.discoverResources(applicationPath,
         reflectionService, resolver);
 
-    resolver.validate();
     return resolver;
   }
 

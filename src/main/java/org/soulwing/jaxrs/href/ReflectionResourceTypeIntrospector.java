@@ -20,12 +20,18 @@ package org.soulwing.jaxrs.href;
 
 import java.lang.reflect.Method;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * A {@link ResourceTypeIntrospector} that utilizes reflection.
  *
  * @author Carl Harris
  */
 class ReflectionResourceTypeIntrospector implements ResourceTypeIntrospector {
+
+  private static final Logger logger =
+      LoggerFactory.getLogger(ReflectionResourceTypeIntrospector.class);
 
   private final ResourceDescriptorFactory descriptorFactory;
   private final ResourceMethodIntrospector methodIntrospector;
@@ -44,44 +50,55 @@ class ReflectionResourceTypeIntrospector implements ResourceTypeIntrospector {
 
   @Override
   public void describe(Class<?> type, String resourcePath, ModelPath modelPath,
-      PathTemplateResolver pathTemplateResolver,
+      TemplateResolver templateResolver,
       ReflectionService reflectionService,
       ConfigurableResourcePathResolver resolver)
       throws ResourceConfigurationException {
 
     if (reflectionService.isAbstractType(type)) {
       throw new ResourceConfigurationException(
-          "cannot describe abstract resource type " + type.getSimpleName());
+          "cannot describe abstract resource " + typeToString(type));
     }
 
     ReferencedBy referencedBy = reflectionService.getAnnotation(type,
         ReferencedBy.class);
 
-    if (referencedBy == null) return;
+    if (referencedBy != null) {
 
-    modelPath = modelPath.concat(referencedBy);
+      modelPath = modelPath.concat(referencedBy);
 
-    TemplateResolver templateResolver = reflectionService.getAnnotation(type,
-        TemplateResolver.class);
-    if (templateResolver != null) {
-      pathTemplateResolver = TemplateResolverUtils.newResolver(
-          templateResolver.value());
+      if (referencedBy.descriptor()) {
+
+        if (templateResolver == null) {
+          throw new ResourceConfigurationException(
+              "no template resolver for " + typeToString(type));
+        }
+
+        final PathTemplateResolver pathTemplateResolver =
+            TemplateResolverUtils.newResolver(templateResolver.value());
+
+        resolver.addDescriptor(descriptorFactory.newDescriptor(type,
+            resourcePath, modelPath, pathTemplateResolver));
+      }
     }
-
-    resolver.addDescriptor(descriptorFactory.newDescriptor(type,
-        resourcePath, modelPath, pathTemplateResolver));
 
     for (Method method : reflectionService.getMethods(type)) {
       if (!reflectionService.getReturnType(method).equals(void.class)) {
         methodIntrospector.describe(method, resourcePath, modelPath,
-            pathTemplateResolver, reflectionService, this, resolver);
+            templateResolver, reflectionService, this, resolver);
       }
     }
 
   }
 
-  private String methodToString(Method method) {
-    return method.getDeclaringClass().getSimpleName() + "." + method.getName();
+  private String typeToString(Class<?> type) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("type ");
+    sb.append(type.getSimpleName());
+    sb.append(" (");
+    sb.append(type.getName());
+    sb.append(")");
+    return sb.toString();
   }
 
 }

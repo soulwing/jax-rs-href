@@ -24,12 +24,20 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import org.omg.CORBA.Any;
+
 /**
  * An abstracting for a path of model classes.
  *
  * @author Carl Harris
  */
 class ModelPath {
+
+  public enum MatchType {
+    EXACT,
+    ANY,
+    ANY_SEQUENCE;
+  }
 
   private final List<Class<?>> path = new ArrayList<>();
 
@@ -107,25 +115,61 @@ class ModelPath {
   }
 
   /**
+   * Gets the match type of the path element at the given index.
+   * @param index index of the subject path element
+   * @return match type
+   */
+  public MatchType matchTypeAt(int index) {
+    final Class<?> type = path.get(index);
+    if (type.equals(AnyModel.class)) {
+      return MatchType.ANY;
+    }
+    else if (type.equals(AnyModelSequence.class)) {
+      return MatchType.ANY_SEQUENCE;
+    }
+    return MatchType.EXACT;
+  }
+
+  /**
+   * Gets the length of this path.
+   * @return path length
+   */
+  public int length() {
+    return path.size();
+  }
+
+  /**
    * {@inheritDoc}
    */
   @Override
   public String toString() {
     if (path.size() == 1) {
-      return path.get(0).getSimpleName();
+      return typeToString(path.get(0));
     }
 
     final StringBuilder sb = new StringBuilder();
     int i = 0;
     sb.append("[");
     for (Class<?> modelClass : path) {
-      sb.append(modelClass.getSimpleName());
+      sb.append(typeToString(modelClass));
       if (++i < path.size()) {
         sb.append(", ");
       }
     }
     sb.append("]");
     return sb.toString();
+  }
+
+  private String typeToString(Class<?> type) {
+    if (type.equals(AnyModel.class)) {
+      return "?";
+    }
+    else if (type.equals(AnyModelSequence.class)) {
+      return "*";
+    }
+    else {
+      return type.getSimpleName();
+    }
   }
 
   @Override

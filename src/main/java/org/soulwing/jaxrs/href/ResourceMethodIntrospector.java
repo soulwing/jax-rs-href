@@ -34,15 +34,15 @@ interface ResourceMethodIntrospector {
    * @param method the method to describe
    * @param resourcePath resource path associated with the type
    * @param modelPath model parent model path
-   * @param pathTemplateResolver default template path resolver
-   * @param typeIntrospector introspector to use for discovered types
+   * @param templateResolver default template path resolver
    * @param reflectionService reflection service to use for introspection
+   * @param typeIntrospector introspector to use for discovered types
    * @param resolver the resolver to configure
    * @throws ResourceConfigurationException if a configuration error is
    *   discovered
    */
   void describe(Method method, String resourcePath, ModelPath modelPath,
-      PathTemplateResolver pathTemplateResolver,
+      TemplateResolver templateResolver,
       ReflectionService reflectionService,
       ResourceTypeIntrospector typeIntrospector,
       ConfigurableResourcePathResolver resolver)

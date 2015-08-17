@@ -18,7 +18,7 @@
  */
 package org.soulwing.jaxrs.href;
 
-import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
 
 import java.lang.reflect.Method;
@@ -75,6 +75,15 @@ public class ReflectionResourceMethodIntrospectorTest {
   @Mock
   private ResourceDescriptor descriptor;
 
+  private TemplateResolver inheritedTemplateResolver =
+      AnnotationUtils.templateResolverAnnotation(MockTemplateResolver.class);
+
+  private TemplateResolver typeTemplateResolver =
+      AnnotationUtils.templateResolverAnnotation(MockTemplateResolver.class);
+
+  private TemplateResolver methodTemplateResolver =
+      AnnotationUtils.templateResolverAnnotation(MockTemplateResolver.class);
+
   private ReflectionResourceMethodIntrospector introspector;
 
   @Before
@@ -85,9 +94,9 @@ public class ReflectionResourceMethodIntrospectorTest {
   @Test
   public void testMethodThatIsNotResourceOrLocator() throws Exception {
     final Method method = MockResource.class.getMethod("notResourceOrLocator");
-
-    context.checking(resourceAnnotationExpectations(method, false, false));
-
+    final boolean hasPath = false;
+    final boolean hasHttpMethod = false;
+    context.checking(resourceAnnotationExpectations(method, hasPath, hasHttpMethod));
     introspector.describe(method, PARENT_PATH, MODEL_PATH, null,
         reflectionService, typeIntrospector, resolver);
   }
@@ -95,9 +104,16 @@ public class ReflectionResourceMethodIntrospectorTest {
   @Test
   public void testLocatorMethodWithConcreteReturn() throws Exception {
     final Method method = MockResource.class.getMethod("locator");
-    context.checking(resourceAnnotationExpectations(method, true, false));
-    context.checking(annotatedLocatorMethodExpectations(method, false, true, false));
-    context.checking(methodDescriptorExpectations(method, true));
+    final boolean hasPath = true;
+    final boolean hasHttpMethod = false;
+    final boolean hasAbstractReturnType = false;
+    final boolean hasTemplateResolver = true;
+    context.checking(resourceAnnotationExpectations(method, hasPath,
+        hasHttpMethod));
+    context.checking(annotatedLocatorMethodExpectations(method,
+        hasAbstractReturnType, hasTemplateResolver));
+    context.checking(typeDescriptorExpectations(MockResource.class,
+        MODEL_PATH.concat(Object.class), hasTemplateResolver));
     introspector.describe(method, PARENT_PATH, MODEL_PATH, null,
         reflectionService, typeIntrospector, resolver);
   }
@@ -106,21 +122,25 @@ public class ReflectionResourceMethodIntrospectorTest {
   public void testLocatorMethodWithConcreteReturnAndTypeTemplateResolver()
       throws Exception {
     final Method method = MockResource.class.getMethod("locator");
-    context.checking(resourceAnnotationExpectations(method, true, false));
-    context.checking(annotatedLocatorMethodExpectations(method, false, false, true));
-    context.checking(methodDescriptorExpectations(method, true));
-    introspector.describe(method, PARENT_PATH, MODEL_PATH, null,
-        reflectionService, typeIntrospector, resolver);
-  }
-
-  @Test
-  public void testLocatorMethodWithConcreteReturnAndDefaultTemplateResolver()
-      throws Exception {
-    final Method method = MockResource.class.getMethod("locator");
-    context.checking(resourceAnnotationExpectations(method, true, false));
-    context.checking(annotatedLocatorMethodExpectations(method, false, false, false));
-    context.checking(methodDescriptorExpectations(method, false));
-    introspector.describe(method, PARENT_PATH, MODEL_PATH, pathTemplateResolver,
+    final boolean hasPath = true;
+    final boolean hasHttpMethod = false;
+    final boolean hasAbstractReturnType = false;
+    final boolean hasMethodTemplateResolver = false;
+    context.checking(resourceAnnotationExpectations(method, hasPath,
+        hasHttpMethod));
+    context.checking(annotatedLocatorMethodExpectations(method,
+        hasAbstractReturnType, hasMethodTemplateResolver));
+    context.checking(typeDescriptorExpectations(MockResource.class,
+        MODEL_PATH.concat(Object.class), hasMethodTemplateResolver));
+    context.checking(new Expectations() {
+      {
+        oneOf(reflectionService).getAnnotation(MockResource.class,
+            TemplateResolver.class);
+        will(returnValue(typeTemplateResolver));
+      }
+    });
+    introspector.describe(method, PARENT_PATH, MODEL_PATH,
+        inheritedTemplateResolver,
         reflectionService, typeIntrospector, resolver);
   }
 
@@ -128,9 +148,20 @@ public class ReflectionResourceMethodIntrospectorTest {
   public void testLocatorMethodWithAbstractReturn()
       throws Exception {
     final Method method = MockResource.class.getMethod("locator");
-    context.checking(resourceAnnotationExpectations(method, true, false));
-    context.checking(annotatedLocatorMethodExpectations(method, true, true, false));
-    context.checking(methodDescriptorExpectations(method, true));
+    final boolean hasPath = true;
+    final boolean hasHttpMethod = false;
+    final boolean hasAbstractReturnType = true;
+    final boolean hasTemplateResolver = false;
+    context.checking(resourceAnnotationExpectations(method, hasPath,
+        hasHttpMethod));
+    context.checking(annotatedLocatorMethodExpectations(method,
+        hasAbstractReturnType, hasTemplateResolver));
+    context.checking(typeDescriptorExpectations(MockSubResource.class,
+        MODEL_PATH, hasTemplateResolver));
+    context.checking(new Expectations() {
+      {
+      }
+    });
     context.checking(new Expectations() {
       {
         oneOf(reflectionService).getSubTypesOf(MockResource.class);
@@ -138,19 +169,28 @@ public class ReflectionResourceMethodIntrospectorTest {
         oneOf(reflectionService).getAnnotation(MockSubResource.class,
             ReferencedBy.class);
         will(returnValue(AnnotationUtils.referencedByAnnotation(Object.class)));
+        oneOf(reflectionService).getAnnotation(MockSubResource.class,
+            TemplateResolver.class);
+        will(returnValue(typeTemplateResolver));
       }
     });
 
-    introspector.describe(method, PARENT_PATH, MODEL_PATH, null,
-        reflectionService, typeIntrospector, resolver);
+    introspector.describe(method, PARENT_PATH, MODEL_PATH,
+        typeTemplateResolver, reflectionService, typeIntrospector, resolver);
   }
 
   @Test(expected = ResourceConfigurationException.class)
   public void testLocatorMethodWithAbstractReturnNoMatchingSubResourceType()
       throws Exception {
     final Method method = MockResource.class.getMethod("locator");
-    context.checking(resourceAnnotationExpectations(method, true, false));
-    context.checking(annotatedLocatorMethodExpectations(method, true, true, false));
+    final boolean hasPath = true;
+    final boolean hasHttpMethod = false;
+    final boolean hasAbstractReturnType = true;
+    final boolean hasTemplateResolver = false;
+    context.checking(resourceAnnotationExpectations(method, hasPath,
+        hasHttpMethod));
+    context.checking(annotatedLocatorMethodExpectations(method,
+        hasAbstractReturnType, hasTemplateResolver));
     context.checking(new Expectations() {
       {
         oneOf(reflectionService).getSubTypesOf(MockResource.class);
@@ -169,8 +209,16 @@ public class ReflectionResourceMethodIntrospectorTest {
     final Set<Class<?>> subTypes = new HashSet<>();
     subTypes.add(MockSubResource.class);
     subTypes.add(MockOtherSubResource.class);
-    context.checking(resourceAnnotationExpectations(method, true, false));
-    context.checking(annotatedLocatorMethodExpectations(method, true, true, false));
+
+    final boolean hasPath = true;
+    final boolean hasHttpMethod = false;
+    final boolean hasAbstractReturnType = true;
+    final boolean hasTemplateResolver = false;
+
+    context.checking(resourceAnnotationExpectations(method, hasPath,
+        hasHttpMethod));
+    context.checking(annotatedLocatorMethodExpectations(method,
+        hasAbstractReturnType, hasTemplateResolver));
     context.checking(new Expectations() {
       {
         oneOf(reflectionService).getSubTypesOf(MockResource.class);
@@ -188,176 +236,111 @@ public class ReflectionResourceMethodIntrospectorTest {
         reflectionService, typeIntrospector, resolver);
   }
 
-
-  private Expectations annotatedLocatorMethodExpectations(
-      final Method method, final boolean abstractReturnType,
-      final boolean methodTemplateResolver, final boolean typeTemplateResolver)
-      throws Exception {
-    return new Expectations() {
-      {
-        allowing(reflectionService).getReturnType(method);
-        will(returnValue(MockResource.class));
-        oneOf(reflectionService).isAbstractType(MockResource.class);
-        will(returnValue(abstractReturnType));
-        allowing(reflectionService).getAnnotation(method, ReferencedBy.class);
-        will(returnValue(AnnotationUtils.referencedByAnnotation(Object.class)));
-        allowing(reflectionService).getAnnotation(method, TemplateResolver.class);
-        will(returnValue(methodTemplateResolver ?
-            AnnotationUtils.templateResolverAnnotation(
-                MockTemplateResolver.class) : null));
-        allowing(reflectionService).getAnnotation(MockResource.class,
-            TemplateResolver.class);
-        will(returnValue(typeTemplateResolver ?
-            AnnotationUtils.templateResolverAnnotation(
-                MockTemplateResolver.class) : null));
-      }
-    };
-  }
-
-  private Expectations methodDescriptorExpectations(final Method method,
-      final boolean hasTemplateResolver)
-      throws Exception {
-    return new Expectations() {
-      {
-        oneOf(descriptorFactory).newDescriptor(
-            with(method),
-            with(PARENT_PATH + RESOURCE_PATH),
-            with(MODEL_PATH.concat(Object.class)),
-            (PathTemplateResolver) with(hasTemplateResolver ?
-              instanceOf(MockTemplateResolver.class)
-              : sameInstance(pathTemplateResolver)));
-        will(returnValue(descriptor));
-        oneOf(resolver).addDescriptor(descriptor);
-      }
-    };
-  }
-
   @Test
   public void testAnnotatedSubResource() throws Exception {
     final Method method = MockResource.class.getMethod("locator");
-
-    context.checking(resourceAnnotationExpectations(method, true, false));
+    final boolean hasPath = true;
+    final boolean hasHttpMethod = false;
+    final boolean hasTemplateResolver = false;
+    context.checking(resourceAnnotationExpectations(method, hasPath,
+        hasHttpMethod));
+    context.checking(annotatedSubresourceExpectations(method,
+        hasTemplateResolver));
+    context.checking(typeDescriptorExpectations(MockSubResource.class,
+        MODEL_PATH, hasTemplateResolver));
     context.checking(new Expectations() {
       {
-        oneOf(reflectionService).getReturnType(method);
-        will(returnValue(MockSubResource.class));
-        oneOf(reflectionService).isAbstractType(MockSubResource.class);
-        will(returnValue(false));
-        oneOf(reflectionService).getAnnotation(method, ReferencedBy.class);
-        will(returnValue(null));
-        oneOf(reflectionService).getAnnotation(method, TemplateResolver.class);
-        will(returnValue(null));
-        oneOf(reflectionService).getAnnotation(MockSubResource.class,
-            ReferencedBy.class);
-        will(returnValue(AnnotationUtils.referencedByAnnotation(Object.class)));
         oneOf(reflectionService).getAnnotation(MockSubResource.class,
             TemplateResolver.class);
-        will(returnValue(AnnotationUtils.templateResolverAnnotation(
-            MockTemplateResolver.class)));
-        oneOf(descriptorFactory).newDescriptor(
-            with(MockSubResource.class),
-            with(PARENT_PATH + RESOURCE_PATH),
-            with(MODEL_PATH.concat(Object.class)),
-            (PathTemplateResolver) with(instanceOf(MockTemplateResolver.class)));
-        will(returnValue(descriptor));
-        oneOf(resolver).addDescriptor(descriptor);
+        will(returnValue(typeTemplateResolver));
       }
     });
-
-    introspector.describe(method, PARENT_PATH, MODEL_PATH, null,
-        reflectionService, typeIntrospector, resolver);
-  }
-
-  @Test
-  public void testAnnotatedSubResourceWithDefaultTemplateResolver()
-      throws Exception {
-    final Method method = MockResource.class.getMethod("locator");
-
-    context.checking(resourceAnnotationExpectations(method, true, false));
-    context.checking(new Expectations() {
-      {
-        oneOf(reflectionService).getReturnType(method);
-        will(returnValue(MockSubResource.class));
-        oneOf(reflectionService).isAbstractType(MockSubResource.class);
-        will(returnValue(false));
-        oneOf(reflectionService).getAnnotation(method, ReferencedBy.class);
-        will(returnValue(null));
-        oneOf(reflectionService).getAnnotation(method, TemplateResolver.class);
-        will(returnValue(null));
-        oneOf(reflectionService).getAnnotation(MockSubResource.class,
-            ReferencedBy.class);
-        will(returnValue(AnnotationUtils.referencedByAnnotation(Object.class)));
-        oneOf(reflectionService).getAnnotation(MockSubResource.class,
-            TemplateResolver.class);
-        will(returnValue(null));
-        oneOf(descriptorFactory).newDescriptor(
-            with(MockSubResource.class),
-            with(PARENT_PATH + RESOURCE_PATH),
-            with(MODEL_PATH.concat(Object.class)),
-            with(sameInstance(pathTemplateResolver)));
-        will(returnValue(descriptor));
-        oneOf(resolver).addDescriptor(descriptor);
-      }
-    });
-
-    introspector.describe(method, PARENT_PATH, MODEL_PATH, pathTemplateResolver,
+    introspector.describe(method, PARENT_PATH, MODEL_PATH, typeTemplateResolver,
         reflectionService, typeIntrospector, resolver);
   }
 
   @Test
   public void testAnnotatedResourceMethod() throws Exception {
     final Method method = MockResource.class.getMethod("resource");
-
-    context.checking(resourceAnnotationExpectations(method, true, true));
-    context.checking(new Expectations() {
-      {
-        oneOf(reflectionService).getReturnType(method);
-        will(returnValue(MockSubResource.class));
-        oneOf(reflectionService).getAnnotation(method, ReferencedBy.class);
-        will(returnValue(AnnotationUtils.referencedByAnnotation(Object.class)));
-        oneOf(reflectionService).getAnnotation(method, TemplateResolver.class);
-        will(returnValue(AnnotationUtils.templateResolverAnnotation(
-            MockTemplateResolver.class)));
-        oneOf(descriptorFactory).newDescriptor(
-            with(method),
-            with(PARENT_PATH + RESOURCE_PATH),
-            with(MODEL_PATH.concat(Object.class)),
-            (PathTemplateResolver) with(instanceOf(MockTemplateResolver.class)));
-        will(returnValue(descriptor));
-        oneOf(resolver).addDescriptor(descriptor);
-      }
-    });
-
+    final boolean hasPath = true;
+    final boolean hasHttpMethod = true;
+    final boolean hasTemplateResolver = true;
+    context.checking(resourceAnnotationExpectations(method, hasPath,
+        hasHttpMethod));
+    context.checking(annotatedResourceMethodExpectations(method,
+        hasTemplateResolver));
+    context.checking(methodDescriptorExpectations(method,
+        hasTemplateResolver));
     introspector.describe(method, PARENT_PATH, MODEL_PATH, null,
         reflectionService, typeIntrospector, resolver);
   }
 
   @Test
-  public void testAnnotatedResourceMethodWithDefaultTemplateResolver()
+  public void testAnnotatedResourceMethodWithTypeTemplateResolver()
       throws Exception {
     final Method method = MockResource.class.getMethod("resource");
+    final boolean hasPath = true;
+    final boolean hasHttpMethod = true;
+    final boolean hasTemplateResolver = false;
+    context.checking(resourceAnnotationExpectations(method, hasPath,
+        hasHttpMethod));
+    context.checking(annotatedResourceMethodExpectations(method,
+        hasTemplateResolver));
+    context.checking(methodDescriptorExpectations(method,
+        hasTemplateResolver));
+    introspector.describe(method, PARENT_PATH, MODEL_PATH, typeTemplateResolver,
+        reflectionService, typeIntrospector, resolver);
+  }
 
-    context.checking(resourceAnnotationExpectations(method, true, true));
-    context.checking(new Expectations() {
+  private Expectations annotatedLocatorMethodExpectations(
+      final Method method, final boolean hasAbstractReturnType,
+      final boolean hasTemplateResolver)
+      throws Exception {
+    return new Expectations() {
       {
-        oneOf(reflectionService).getReturnType(method);
-        will(returnValue(MockSubResource.class));
+        allowing(reflectionService).getReturnType(method);
+        will(returnValue(MockResource.class));
+        oneOf(reflectionService).isAbstractType(MockResource.class);
+        will(returnValue(hasAbstractReturnType));
         oneOf(reflectionService).getAnnotation(method, ReferencedBy.class);
         will(returnValue(AnnotationUtils.referencedByAnnotation(Object.class)));
         oneOf(reflectionService).getAnnotation(method, TemplateResolver.class);
-        will(returnValue(null));
-        oneOf(descriptorFactory).newDescriptor(
-            with(method),
-            with(PARENT_PATH + RESOURCE_PATH),
-            with(MODEL_PATH.concat(Object.class)),
-            with(sameInstance(pathTemplateResolver)));
-        will(returnValue(descriptor));
-        oneOf(resolver).addDescriptor(descriptor);
+        will(returnValue(hasTemplateResolver ? methodTemplateResolver : null));
       }
-    });
+    };
+  }
 
-    introspector.describe(method, PARENT_PATH, MODEL_PATH, pathTemplateResolver,
-        reflectionService, typeIntrospector, resolver);
+  private Expectations typeDescriptorExpectations(final Class<?> returnType,
+      final ModelPath modelPath, final boolean hasTemplateResolver)
+      throws Exception {
+    return new Expectations() {
+      {
+        oneOf(typeIntrospector).describe(
+            with(returnType),
+            with(PARENT_PATH + RESOURCE_PATH),
+            with(modelPath),
+            with(hasTemplateResolver ? methodTemplateResolver :
+                typeTemplateResolver),
+            with(reflectionService),
+            with(resolver));
+      }
+    };
+  }
+
+  private Expectations annotatedSubresourceExpectations(
+      final Method method, final boolean hasTemplateResolver) throws Exception {
+    return new Expectations() {
+      {
+        oneOf(reflectionService).getReturnType(method);
+        will(returnValue(MockSubResource.class));
+        oneOf(reflectionService).isAbstractType(MockSubResource.class);
+        will(returnValue(false));
+        oneOf(reflectionService).getAnnotation(method, ReferencedBy.class);
+        will(returnValue(null));
+        oneOf(reflectionService).getAnnotation(method, TemplateResolver.class);
+        will(returnValue(hasTemplateResolver ? typeTemplateResolver : null));
+      }
+    };
   }
 
   private Expectations resourceAnnotationExpectations(
@@ -381,6 +364,36 @@ public class ReflectionResourceMethodIntrospectorTest {
         will(returnValue(null));
         allowing(reflectionService).getAnnotation(method, OPTIONS.class);
         will(returnValue(null));
+      }
+    };
+  }
+
+  private Expectations annotatedResourceMethodExpectations(
+      final Method method, final boolean hasTemplateResolver) throws Exception {
+    return new Expectations() {
+      {
+        oneOf(reflectionService).getReturnType(method);
+        will(returnValue(MockSubResource.class));
+        oneOf(reflectionService).getAnnotation(method, ReferencedBy.class);
+        will(returnValue(AnnotationUtils.referencedByAnnotation(Object.class)));
+        oneOf(reflectionService).getAnnotation(method, TemplateResolver.class);
+        will(returnValue(hasTemplateResolver ? methodTemplateResolver : null));
+      }
+    };
+  }
+
+  private Expectations methodDescriptorExpectations(
+      final Method method, final boolean hasTemplateResolver) throws Exception {
+    return new Expectations() {
+      {
+        oneOf(descriptorFactory).newDescriptor(
+            with(method),
+            with(PARENT_PATH + RESOURCE_PATH),
+            with(MODEL_PATH.concat(Object.class)),
+            with(any(PathTemplateResolver.class)));
+        will(returnValue(descriptor));
+        oneOf(resolver).addDescriptor(descriptor);
+
       }
     };
   }

@@ -19,9 +19,13 @@
 package org.soulwing.jaxrs.href;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -45,6 +49,7 @@ class SimpleResourcePathResolver implements ConfigurableResourcePathResolver {
    */
   @Override
   public void addDescriptor(ResourceDescriptor descriptor) {
+    logger.debug("{}", descriptor);
     descriptors.add(descriptor);
   }
 
@@ -53,48 +58,45 @@ class SimpleResourcePathResolver implements ConfigurableResourcePathResolver {
    */
   @Override
   public void validate() throws ResourceConfigurationException {
-    List<List<Class<?>>> duplicatedPaths = findDuplicatedPaths(createPathList());
-    // log resources whose paths are duplicated
-    boolean foundDuplicates = false;
+    if (findDuplicatedPaths(createPathList())) {
+      throw new ResourceConfigurationException(
+          "found duplicate resource descriptors");
+    }
+  }
+
+  private boolean findDuplicatedPaths(List<ModelPath> paths) {
+    Set<ModelPath> pathSet = new HashSet<>(paths.size());
+    pathSet.addAll(paths);
+    if (pathSet.size() == paths.size()) return false;
+
+    Map<ModelPath, Set<ResourceDescriptor>> pathMap = new HashMap<>();
     for (ResourceDescriptor descriptor : descriptors) {
-      if (duplicatedPaths.contains(replaceWildcards(
-          descriptor.referencedBy().asList()))) {
-        logger.error("duplicate resource descriptor: {}", descriptor);
-        foundDuplicates = true;
+      final ModelPath modelPath = descriptor.referencedBy();
+      Set<ResourceDescriptor> descriptorSet = pathMap.get(modelPath);
+      if (descriptorSet == null) {
+        descriptorSet = new HashSet<>();
+        pathMap.put(modelPath, descriptorSet);
+      }
+      descriptorSet.add(descriptor);
+    }
+
+    for (ModelPath path : pathMap.keySet()) {
+      final Set<ResourceDescriptor> descriptors = pathMap.get(path);
+      if (descriptors.size() <= 1) continue;
+      for (ResourceDescriptor descriptor : descriptors) {
+        logger.error("DUPLICATE: {}", descriptor);
       }
     }
-    if (foundDuplicates) {
-      throw new ResourceConfigurationException("found duplicate resource descriptors");
-    }
+
+    return true;
   }
 
-  private List<List<Class<?>>> findDuplicatedPaths(List<List<Class<?>>> paths) {
-    Set<List<Class<?>>> pathSet = new HashSet<>(paths.size());
-    pathSet.addAll(paths);
-    List<List<Class<?>>> duplicatedPaths = new ArrayList<>(paths.size());
-    duplicatedPaths.removeAll(pathSet);
-    return duplicatedPaths;
-  }
-
-  private List<List<Class<?>>> createPathList() {
-    List<List<Class<?>>> paths = new LinkedList<>();
+  private List<ModelPath> createPathList() {
+    List<ModelPath> paths = new LinkedList<>();
     for (ResourceDescriptor descriptor : descriptors) {
-      paths.add(replaceWildcards(descriptor.referencedBy().asList()));
+      paths.add(descriptor.referencedBy());
     }
     return paths;
-  }
-
-  private List<Class<?>> replaceWildcards(List<Class<?>> path) {
-    List<Class<?>> replacementPath = new ArrayList<>(path.size());
-    for (Class<?> type : path) {
-      if (type.equals(AnyModel.class)) {
-        replacementPath.add(Object.class);
-      }
-      else if (!type.equals(AnyModelSequence.class)) {
-        replacementPath.add(type);
-      }
-    }
-    return replacementPath;
   }
 
   /**
@@ -102,28 +104,134 @@ class SimpleResourcePathResolver implements ConfigurableResourcePathResolver {
    */
   @Override
   public String resolve(PathTemplateContext context, Class<?>... modelPath) {
-    final ResourceDescriptor descriptor = findUniqueMatch(
+    final ResourceDescriptor descriptor = findBestMatch(
         ModelPath.with(modelPath));
     return descriptor.templateResolver().resolve(descriptor.path(), context);
   }
 
-  private ResourceDescriptor findUniqueMatch(ModelPath modelPath) {
+  private ResourceDescriptor findBestMatch(ModelPath modelPath) {
     List<ResourceDescriptor> matches = findAllMatches(modelPath);
-    int numMatches = matches.size();
+
+    final int numMatches = matches.size();
     if (numMatches == 0) {
       throw new ResourceNotFoundException(modelPath);
     }
+    if (numMatches == 1) {
+      final ResourceDescriptor descriptor = matches.get(0);
+      if (logger.isTraceEnabled()) {
+        logger.trace("{} has singular match {}", modelPath, descriptor);
+      }
+      return descriptor;
+    }
+
+    final ResourceDescriptor exactMatch = findExactMatch(modelPath, matches);
+    if (exactMatch != null) {
+      if (logger.isTraceEnabled()) {
+        logger.trace("{} has exact match {}", modelPath, exactMatch);
+      }
+      return exactMatch;
+    }
+
+    matches = findLongestMatches(modelPath, matches);
+    final int length = matches.get(0).referencedBy().length();
+    int step = 0;
+    while (step < length && matches.size() > 1) {
+      matches = findBestMatchesAtStep(step++, modelPath, matches);
+    }
+    if (matches.size() > 1) {
+      throw new AmbiguousPathResolutionException(modelPath, matches);
+    }
+
+    return matches.get(0);
+  }
+
+  private ResourceDescriptor findExactMatch(ModelPath modelPath,
+      List<ResourceDescriptor> allMatches) {
+    assert allMatches.size() > 0;
+    if (allMatches.size() == 1) {
+      return allMatches.get(0);
+    }
+
+    List<ResourceDescriptor> matches = new ArrayList<>();
+    for (ResourceDescriptor descriptor : allMatches) {
+      if (descriptor.referencedBy().equals(modelPath)) {
+        matches.add(descriptor);
+      }
+    }
+
+    final int numMatches = matches.size();
+    if (numMatches == 0) {
+      return null;
+    }
+
     if (numMatches > 1) {
       throw new AmbiguousPathResolutionException(modelPath, matches);
     }
+
     return matches.get(0);
+  }
+
+  private List<ResourceDescriptor> findBestMatchesAtStep(int step,
+      ModelPath modelPath, List<ResourceDescriptor> descriptors) {
+    ModelPath.MatchType matchType = bestMatchTypeAtStep(step, descriptors);
+    List<ResourceDescriptor> matches = new ArrayList<>(descriptors.size());
+    for (ResourceDescriptor descriptor : descriptors) {
+      if (descriptor.referencedBy().matchTypeAt(step) == matchType) {
+        if (logger.isTraceEnabled()) {
+          logger.trace("at step {}: {} has best match {}", step, modelPath,
+              descriptor);
+        }
+
+        matches.add(descriptor);
+      }
+    }
+    return matches;
+  }
+
+  private ModelPath.MatchType bestMatchTypeAtStep(int step,
+      List<ResourceDescriptor> descriptors) {
+    assert descriptors.size() >= 1;
+    ModelPath.MatchType bestMatchType = descriptors.get(0).referencedBy()
+        .matchTypeAt(step);
+    for (int i = 1, max = descriptors.size(); i < max; i++) {
+      ModelPath.MatchType matchType = descriptors.get(i).referencedBy()
+          .matchTypeAt(step);
+      if (matchType.ordinal() < bestMatchType.ordinal()) {
+        bestMatchType = matchType;
+      }
+    }
+    return bestMatchType;
+  }
+
+  private List<ResourceDescriptor> findLongestMatches(
+      ModelPath modelPath, List<ResourceDescriptor> allMatches) {
+    if (allMatches.size() <= 1) return allMatches;
+    Collections.sort(allMatches, new Comparator<ResourceDescriptor>() {
+      @Override
+      public int compare(ResourceDescriptor a, ResourceDescriptor b) {
+        return b.referencedBy().length() - a.referencedBy().length();
+      }
+    });
+
+    int longest = allMatches.get(0).referencedBy().length();
+    List<ResourceDescriptor> longestMatches = new ArrayList<>();
+    int i = 0;
+    while (i < allMatches.size()
+        && allMatches.get(i).referencedBy().length() == longest) {
+      final ResourceDescriptor descriptor = allMatches.get(i++);
+      if (logger.isTraceEnabled()) {
+        logger.trace("{} has longest match {}", modelPath, descriptor);
+      }
+      longestMatches.add(descriptor);
+    }
+    return longestMatches;
   }
 
   private List<ResourceDescriptor> findAllMatches(ModelPath modelPath) {
     List<ResourceDescriptor> matches = new ArrayList<>();
     for (ResourceDescriptor descriptor : descriptors) {
       if (descriptor.matches(modelPath)) {
-        logger.debug("{} matches {}", modelPath, descriptor);
+        logger.trace("{} matches {}", modelPath, descriptor);
         matches.add(descriptor);
       }
     }

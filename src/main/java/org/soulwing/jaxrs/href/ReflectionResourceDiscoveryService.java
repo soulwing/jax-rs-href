@@ -23,12 +23,18 @@ import java.util.Set;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.UriBuilder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * A concrete {@link ResourceDiscoveryService}.
  *
  * @author Carl Harris
  */
 class ReflectionResourceDiscoveryService implements ResourceDiscoveryService {
+
+  private static final Logger logger = LoggerFactory.getLogger(
+      ReflectionResourceDiscoveryService.class);
 
   private final ResourceTypeIntrospector typeIntrospector;
 
@@ -53,6 +59,7 @@ class ReflectionResourceDiscoveryService implements ResourceDiscoveryService {
       ConfigurableResourcePathResolver resolver)
       throws ResourceConfigurationException {
 
+    logger.debug("resource discovery started");
     final ModelPath modelPath = ModelPath.with();
     final Set<Class<?>> rootResourceTypes =
         reflectionService.getTypesAnnotatedWith(Path.class);
@@ -64,9 +71,18 @@ class ReflectionResourceDiscoveryService implements ResourceDiscoveryService {
       final String qualifiedPath = UriBuilder.fromPath(applicationPath)
           .path(path.value()).toTemplate();
 
+      logger.trace("discovered root resource {}",
+          rootResourceType.getSimpleName());
+
+      TemplateResolver templateResolver = reflectionService.getAnnotation(
+          rootResourceType, TemplateResolver.class);
+
       typeIntrospector.describe(rootResourceType, qualifiedPath, modelPath,
-          null, reflectionService, resolver);
+          templateResolver, reflectionService, resolver);
     }
+
+    resolver.validate();
+    logger.debug("resource discovery completed");
   }
 
 }

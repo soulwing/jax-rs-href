@@ -38,5 +38,20 @@ public @interface ReferencedBy {
    * @return array of model classes
    */
   Class<?>[] value();
-  
+
+  /**
+   * Flag indicating whether a type annotated with this annotation should
+   * be considered a resource descriptor.
+   * @return flag value
+   */
+  boolean descriptor() default true;
+
+  /**
+   * Flag indicating whether the type or method annotated with this method
+   * inherits model path.
+   * be considered a resource descriptor.
+   * @return flag value
+   */
+  boolean inherit() default true;
+
 }

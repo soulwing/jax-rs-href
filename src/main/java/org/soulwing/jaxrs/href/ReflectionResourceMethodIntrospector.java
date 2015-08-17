@@ -67,7 +67,7 @@ class ReflectionResourceMethodIntrospector
 
   @Override
   public void describe(Method method, String resourcePath, ModelPath modelPath,
-      PathTemplateResolver pathTemplateResolver,
+      TemplateResolver templateResolver,
       ReflectionService reflectionService,
       ResourceTypeIntrospector typeIntrospector,
       ConfigurableResourcePathResolver resolver)
@@ -79,14 +79,13 @@ class ReflectionResourceMethodIntrospector
     final boolean resourceMethod = isResourceMethod(method, reflectionService);
 
     if (path == null && !resourceMethod) {
-      logger.trace("ignoring method {}", methodToString(method));
       return;
     }
 
     ReferencedBy referencedBy = reflectionService.getAnnotation(method,
         ReferencedBy.class);
 
-    TemplateResolver templateResolver = reflectionService.getAnnotation(
+    TemplateResolver methodTemplateResolver = reflectionService.getAnnotation(
         method, TemplateResolver.class);
 
     Class<?> returnType = reflectionService.getReturnType(method);
@@ -96,44 +95,53 @@ class ReflectionResourceMethodIntrospector
         logger.trace("ignoring method {}", methodToString(method));
         return;
       }
-      modelPath = modelPath.concat(referencedBy);
 
-      if (templateResolver != null) {
-        pathTemplateResolver = TemplateResolverUtils.newResolver(
-            templateResolver.value());
+      if (referencedBy.inherit()) {
+        modelPath = modelPath.concat(referencedBy);
       }
+
+      if (methodTemplateResolver != null) {
+        templateResolver = methodTemplateResolver;
+      }
+
+      if (templateResolver == null) {
+        throw new ResourceConfigurationException(
+            "no template resolver for method " + methodToString(method));
+      }
+
+      final PathTemplateResolver pathTemplateResolver = TemplateResolverUtils
+          .newResolver(templateResolver.value());
 
       resolver.addDescriptor(descriptorFactory.newDescriptor(method,
           resourcePath, modelPath, pathTemplateResolver));
+
       return;
     }
 
+
     if (reflectionService.isAbstractType(returnType)) {
-      returnType = findMatchingSubResourceType(method, reflectionService);
-    }
-    final boolean useMethodDescriptor = referencedBy != null;
-    if (referencedBy == null) {
-      referencedBy = reflectionService.getAnnotation(returnType,
-          ReferencedBy.class);
-    }
-    modelPath = modelPath.concat(referencedBy);
+      if (referencedBy == null) return;
 
-    if (templateResolver == null) {
-      templateResolver = reflectionService.getAnnotation(returnType,
-          TemplateResolver.class);
+      returnType = findMatchingSubResourceType(modelPath.concat(referencedBy),
+          reflectionService, method);
     }
-    if (templateResolver != null) {
-      pathTemplateResolver = TemplateResolverUtils.newResolver(
-          templateResolver.value());
+    else if (referencedBy != null && referencedBy.inherit()) {
+      modelPath = modelPath.concat(referencedBy);
     }
 
-    ResourceDescriptor descriptor = useMethodDescriptor ?
-        descriptorFactory.newDescriptor(method,
-          resourcePath, modelPath, pathTemplateResolver)
-        : descriptorFactory.newDescriptor(returnType,
-          resourcePath, modelPath, pathTemplateResolver);
+    if (methodTemplateResolver == null) {
+      TemplateResolver typeTemplateResolver = reflectionService.getAnnotation(
+          returnType, TemplateResolver.class);
+      if (typeTemplateResolver != null) {
+        templateResolver = typeTemplateResolver;
+      }
+    }
+    else {
+      templateResolver = methodTemplateResolver;
+    }
 
-    resolver.addDescriptor(descriptor);
+    typeIntrospector.describe(returnType, resourcePath, modelPath,
+        templateResolver, reflectionService, resolver);
   }
 
   /**
@@ -156,56 +164,22 @@ class ReflectionResourceMethodIntrospector
   }
 
   /**
-   * Validates that the specified referenced model types for method and its
-   * concrete return type are equivalent.
-   * @param method the method to validate
-   * @param reflectionService reflection service
-   */
-  private void validateReferenceTypes(Method method,
-      ReflectionService reflectionService) {
-
-    final Class<?> returnType = reflectionService.getReturnType(method);
-    final ReferencedBy methodReferencedBy = reflectionService.getAnnotation(
-        method, ReferencedBy.class);
-    final ReferencedBy typeReferencedBy = reflectionService.getAnnotation(
-        method, ReferencedBy.class);
-
-    if (methodReferencedBy != null && typeReferencedBy != null &&
-        !Arrays.equals(methodReferencedBy.value(), typeReferencedBy.value())) {
-      throw new ResourceConfigurationException(
-          "when both a sub-resource method and its concrete return type both "
-              + "have an @" + ReferencedBy.class.getSimpleName() + " annotation, "
-              + "both annotations must specify the same model path "
-              + "(at " + methodToString(method) + ")");
-    }
-  }
-
-  /**
    * Finds the unique concrete subtype of the return type of the given method
    * whose referenced-by annotation is equivalent to the referenced-by
    * annotation of the method.
-   * @param method the subject method
-   * @param reflectionService reflection service
-   * @return matching sub type
+   *
+   * @param modelPath model path to match
+   * @param reflectionService reflection service  @return matching sub type
+   * @param method
    * @throws ResourceConfigurationException if the number of concrete types
    *    that satisfy the above criterion is not equal to 1
    */
-  private Class<?> findMatchingSubResourceType(Method method,
-      ReflectionService reflectionService) {
+  private Class<?> findMatchingSubResourceType(ModelPath modelPath,
+      ReflectionService reflectionService, Method method) {
 
-    final ReferencedBy methodReferencedBy =
-        reflectionService.getAnnotation(method, ReferencedBy.class);
-
-    if (methodReferencedBy == null) {
-      throw new ResourceConfigurationException(
-          "sub-resource locator " + methodToString(method)
-              + " with abstract return type must have a @"
-              + ReferencedBy.class.getSimpleName() + " annotation");
-    }
-
-    final Class<?> returnType = reflectionService.getReturnType(method);
     final List<Class<?>> types = new ArrayList<>();
-    final Class<?>[] methodReferences = methodReferencedBy.value();
+    final Class<?> returnType = reflectionService.getReturnType(method);
+    final Class<?>[] methodReferences = modelPath.asArray();
     for (Class<?> type : reflectionService.getSubTypesOf(returnType)) {
       ReferencedBy typeReferencedBy = reflectionService.getAnnotation(type,
           ReferencedBy.class);
@@ -220,16 +194,14 @@ class ReflectionResourceMethodIntrospector
       throw new ResourceConfigurationException("there is no subtype of "
           + returnType.getSimpleName() + " with a @"
           + ReferencedBy.class.getSimpleName() + " that matches "
-          + ModelPath.with(methodReferencedBy.value())
-          + " at " + methodToString(method));
+          + modelPath + " at " + methodToString(method));
     }
     else if (numTypes > 1) {
       throw new ResourceConfigurationException(
           "there is more than one subtype of "
-              + returnType.getSimpleName() + " with a @"
-              + ReferencedBy.class.getSimpleName() + " that matches "
-              + ModelPath.with(methodReferencedBy.value())
-              + " at " + method);
+          + returnType.getSimpleName() + " with a @"
+          + ReferencedBy.class.getSimpleName() + " that matches "
+          + modelPath + " at " + method);
     }
 
     return types.get(0);

@@ -58,6 +58,9 @@ public class ReflectionResourceTypeIntrospectorTest {
   @Mock
   private ResourceDescriptor descriptor;
 
+  private TemplateResolver templateResolver =
+      AnnotationUtils.templateResolverAnnotation(MockTemplateResolver.class);
+
   private ReflectionResourceTypeIntrospector introspector;
 
   @Before
@@ -76,28 +79,61 @@ public class ReflectionResourceTypeIntrospectorTest {
     });
 
     introspector.describe(MockResource.class, null, null,
-        null, reflectionService, resolver);
+        templateResolver, reflectionService, resolver);
   }
 
   @Test
-  public void testDescribeReferencedResourceTypeUsingSpecificResolver()
+  public void testDescribe()
       throws Exception {
-    context.checking(new Expectations() {
+    final boolean hasDescriptorFlag = true;
+    context.checking(annotatedResourceTypeExpectations(hasDescriptorFlag));
+    context.checking(typeDescriptorExpectations());
+    context.checking(describeMethodsExpectations());
+
+    introspector.describe(MockResource.class, PATH, MODEL_PATH,
+        templateResolver, reflectionService, resolver);
+  }
+
+  @Test
+  public void testDescribeWhenReferencedByIndicatesNoDescriptor()
+      throws Exception {
+    final boolean hasDescriptorFlag = false;
+    context.checking(annotatedResourceTypeExpectations(hasDescriptorFlag));
+    context.checking(describeMethodsExpectations());
+
+    introspector.describe(MockResource.class, PATH, MODEL_PATH,
+        templateResolver, reflectionService, resolver);
+  }
+
+  private Expectations annotatedResourceTypeExpectations(
+      final boolean hasDescriptorFlag) {
+    return new Expectations() {
       {
         oneOf(reflectionService).isAbstractType(MockResource.class);
         will(returnValue(false));
         oneOf(reflectionService).getAnnotation(MockResource.class,
             ReferencedBy.class);
-        will(returnValue(AnnotationUtils.referencedByAnnotation(Object.class)));
-        oneOf(reflectionService).getAnnotation(MockResource.class,
-            TemplateResolver.class);
-        will(returnValue(AnnotationUtils.templateResolverAnnotation(
-            MockTemplateResolver.class)));
+        will(returnValue(AnnotationUtils.referencedByAnnotation(
+            hasDescriptorFlag, Object.class)));
+      }
+    };
+  }
+
+  private Expectations typeDescriptorExpectations() throws Exception {
+    return new Expectations() {
+      {
         oneOf(descriptorFactory).newDescriptor(with(MockResource.class),
             with(PATH), with(MODEL_PATH.concat(Object.class)),
             (PathTemplateResolver) with(instanceOf(MockTemplateResolver.class)));
         will(returnValue(descriptor));
         oneOf(resolver).addDescriptor(descriptor);
+      }
+    };
+  }
+
+  private Expectations describeMethodsExpectations() throws Exception {
+    return new Expectations() {
+      {
         oneOf(reflectionService).getMethods(MockResource.class);
         will(returnValue(new Method[]{
             MockResource.class.getMethod("someMethod")}));
@@ -105,15 +141,11 @@ public class ReflectionResourceTypeIntrospectorTest {
             MockResource.class.getMethod("someMethod"));
         will(returnValue(Object.class));
         oneOf(methodIntrospector).describe(
-            with(MockResource.class.getMethod("someMethod")),
-            with(PATH), with(MODEL_PATH.concat(Object.class)),
-            (PathTemplateResolver) with(instanceOf(MockTemplateResolver.class)),
-            with(reflectionService), with(introspector), with(resolver));
+            MockResource.class.getMethod("someMethod"),
+            PATH, MODEL_PATH.concat(Object.class),
+            templateResolver, reflectionService, introspector, resolver);
       }
-    });
-
-    introspector.describe(MockResource.class, PATH, MODEL_PATH,
-        null, reflectionService, resolver);
+    };
   }
 
   public static class MockResource {

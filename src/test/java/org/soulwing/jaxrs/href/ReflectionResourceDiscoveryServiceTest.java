@@ -53,6 +53,9 @@ public class ReflectionResourceDiscoveryServiceTest {
 
   private ReflectionResourceDiscoveryService service;
 
+  private TemplateResolver templateResolver =
+      AnnotationUtils.templateResolverAnnotation(MockTemplateResolver.class);
+
   @Before
   public void setUp() throws Exception {
     service = new ReflectionResourceDiscoveryService(typeIntrospector);
@@ -69,9 +72,15 @@ public class ReflectionResourceDiscoveryServiceTest {
         oneOf(reflectionService).getAnnotation(MockResource.class, Path.class);
         will(returnValue(AnnotationUtils.pathAnnotation(RESOURCE_PATH)));
 
+        oneOf(reflectionService).getAnnotation(MockResource.class,
+            TemplateResolver.class);
+        will(returnValue(templateResolver));
+
         oneOf(typeIntrospector).describe(MockResource.class,
             APPLICATION_PATH + "/" + RESOURCE_PATH, ModelPath.with(),
-            null, reflectionService, resolver);
+            templateResolver, reflectionService, resolver);
+
+        oneOf(resolver).validate();
       }
     });
 
@@ -79,6 +88,14 @@ public class ReflectionResourceDiscoveryServiceTest {
   }
 
   public static class MockResource {
+  }
+
+  public static class MockTemplateResolver implements PathTemplateResolver {
+    @Override
+    public String resolve(String template, PathTemplateContext context)
+        throws AmbiguousPathResolutionException {
+      return null;
+    }
   }
 
 }

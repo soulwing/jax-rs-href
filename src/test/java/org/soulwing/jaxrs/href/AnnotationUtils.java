@@ -48,10 +48,31 @@ public class AnnotationUtils {
    * @return annotation instance
    */
   public static ReferencedBy referencedByAnnotation(final Class<?>... value) {
+    return referencedByAnnotation(true, value);
+  }
+
+  /**
+   * Creates a new instance of {@link ReferencedBy}.
+   * @param descriptor descriptor flag value
+   * @param value class array for value attribute
+   * @return annotation instance
+   */
+  public static ReferencedBy referencedByAnnotation(final boolean descriptor,
+      final Class<?>... value) {
     return new ReferencedByLiteral() {
       @Override
       public Class<?>[] value() {
         return value;
+      }
+
+      @Override
+      public boolean descriptor() {
+        return descriptor;
+      }
+
+      @Override
+      public boolean inherit() {
+        return true;
       }
     };
   }
